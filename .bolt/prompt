@@ -81,3 +81,33 @@ Ensure transform controls are smooth (resize handles, drag area, rotate angle).
 All tools should feel like professional desktop apps but simple enough for a beginner.
 
 Always prioritize essential, useful functionality over adding "just another option." and keep options in canvas/preview  for better expreience by adjusting or button clicking not with manual input only - this makes more dificulties.
+
+also you need to update the home page and the header
+
+you know that this site are multi-domain with single codebase
+
+my domains
+PixoraTools.com (global domain, this will be hold all the tools) - bydefault
+PixoraPDF.com - all pdf related tools - inspired by https://www.ilovepdf.com/
+PixoraIMG.com - all image related tools - inspired by https://www.iloveimg.com/
+Pixoraqrcode.com - qr code generator as like https://www.qrcode-monkey.com/ 
+PixoraNet.com - Network related tools - 
+PixoraSeo.com - Seo Related Tools - inspired by https://smallseotools.com
+PixoraCode.com - Code Related tools - inspired by https://codebeautify.org/htmlviewer
+Pixorautilities.com - Utilities related tools
+
+
+
+it always should be like this
+@components/image-tools-layout.tsx
+@components/pdf-tools-layout.tsx
+@components/text-tools-layout.tsx
+@components/code-tools-layout.tsx
+
+not like this
+@components/simple-image-tools-layout.tsx
+@components/enchanced-image-tools-layout.tsx
+@components/simple-pdf-tools-layout.tsx
+@components/enchanced-pdf-tools-layout.tsx
+or other files also be like this, because no need to rename unncessary for same things.
+you need to handle more better way to keep constenticy.

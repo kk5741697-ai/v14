@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState, useEffect } from "react"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"

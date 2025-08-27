@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Undo, Redo, RotateCcw } from "lucide-react"

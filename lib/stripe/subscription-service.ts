@@ -1,6 +1,5 @@
 import { stripe } from "./config"
 import { SUBSCRIPTION_PLANS, type PlanId } from "./plans"
-import { prisma } from "@/lib/prisma"
 import type Stripe from "stripe"
 
 export class SubscriptionService {
@@ -11,35 +10,8 @@ export class SubscriptionService {
       throw new Error(`Plan ${planId} does not have a Stripe price ID`)
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    })
-
-    if (!user) {
-      throw new Error("User not found")
-    }
-
-    // Check if user already has a Stripe customer ID
-    let customerId = user.stripeCustomerId
-
-    if (!customerId) {
-      // Create new Stripe customer
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.name || undefined,
-        metadata: {
-          userId: user.id,
-        },
-      })
-
-      customerId = customer.id
-
-      // Update user with Stripe customer ID
-      await prisma.user.update({
-        where: { id: userId },
-        data: { stripeCustomerId: customerId },
-      })
-    }
+    // Mock customer for demo
+    const customerId = `cus_demo_${userId}`
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -64,16 +36,11 @@ export class SubscriptionService {
   }
 
   static async createBillingPortalSession(userId: string, returnUrl?: string) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    })
-
-    if (!user?.stripeCustomerId) {
-      throw new Error("User does not have a Stripe customer ID")
-    }
+    // Mock customer for demo
+    const customerId = `cus_demo_${userId}`
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
+      customer: customerId,
       return_url: returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
     })
 
@@ -117,13 +84,23 @@ export class SubscriptionService {
       return
     }
 
-    // Update user's plan
-    await prisma.user.update({
-      where: { id: userId },
-      data: { plan: planId.toUpperCase() as any },
-    })
-
+    // Mock user plan update for demo
     console.log(`User ${userId} upgraded to ${planId}`)
   }
 
+  private static async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+    console.log(`Subscription updated: ${subscription.id}`)
+  }
+
+  private static async handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+    console.log(`Subscription deleted: ${subscription.id}`)
+  }
+
+  private static async handlePaymentSucceeded(invoice: Stripe.Invoice) {
+    console.log(`Payment succeeded: ${invoice.id}`)
+  }
+
+  private static async handlePaymentFailed(invoice: Stripe.Invoice) {
+    console.log(`Payment failed: ${invoice.id}`)
+  }
 }

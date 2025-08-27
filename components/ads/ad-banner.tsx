@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { AdSlotComponent } from "./ad-slot"
 import type { AdSlot } from "@/lib/ads/ad-manager"
 

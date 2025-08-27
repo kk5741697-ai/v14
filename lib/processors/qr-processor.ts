@@ -36,6 +36,10 @@ export interface QRScanResult {
 export class QRProcessor {
   static async generateQRCode(text: string, options: QRCodeOptions = {}): Promise<string> {
     try {
+      if (!text || text.trim() === "") {
+        throw new Error("QR code content cannot be empty")
+      }
+
       const qrOptions = {
         width: options.width || 1000,
         margin: options.margin || 4,
@@ -60,12 +64,17 @@ export class QRProcessor {
 
       return qrDataURL
     } catch (error) {
+      console.error("QR generation failed:", error)
       throw new Error(`Failed to generate QR code: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 
   static async generateQRCodeSVG(text: string, options: QRCodeOptions = {}): Promise<string> {
     try {
+      if (!text || text.trim() === "") {
+        throw new Error("QR code content cannot be empty")
+      }
+
       const qrOptions = {
         width: options.width || 1000,
         margin: options.margin || 4,
@@ -80,6 +89,7 @@ export class QRProcessor {
 
       return await QRCode.toString(text, { ...qrOptions, type: "svg" })
     } catch (error) {
+      console.error("QR SVG generation failed:", error)
       throw new Error(`Failed to generate QR SVG: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
@@ -108,22 +118,31 @@ export class QRProcessor {
         const logoImage = new Image()
         logoImage.crossOrigin = "anonymous"
         logoImage.onload = () => {
-          // Calculate logo size and position
-          const logoSize = logo.width || qrSize * 0.2
-          const logoX = logo.x !== undefined ? logo.x : (qrSize - logoSize) / 2
-          const logoY = logo.y !== undefined ? logo.y : (qrSize - logoSize) / 2
+          try {
+            // Calculate logo size and position
+            const logoSize = logo.width || qrSize * 0.2
+            const logoX = logo.x !== undefined ? logo.x : (qrSize - logoSize) / 2
+            const logoY = logo.y !== undefined ? logo.y : (qrSize - logoSize) / 2
 
-          // Draw white background for logo
-          const padding = 8
-          ctx.fillStyle = "#FFFFFF"
-          ctx.fillRect(logoX - padding, logoY - padding, logoSize + padding * 2, logoSize + padding * 2)
+            // Draw white background for logo with rounded corners
+            const padding = 8
+            ctx.fillStyle = "#FFFFFF"
+            ctx.roundRect(logoX - padding, logoY - padding, logoSize + padding * 2, logoSize + padding * 2, 8)
+            ctx.fill()
 
-          // Draw logo
-          ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize)
+            // Draw logo
+            ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize)
 
-          resolve(canvas.toDataURL("image/png"))
+            resolve(canvas.toDataURL("image/png"))
+          } catch (error) {
+            console.error("Logo processing failed:", error)
+            resolve(qrDataURL) // Return original QR without logo
+          }
         }
-        logoImage.onerror = () => reject(new Error("Failed to load logo"))
+        logoImage.onerror = () => {
+          console.warn("Failed to load logo, returning QR without logo")
+          resolve(qrDataURL)
+        }
         logoImage.src = logo.src
       }
       qrImage.onerror = () => reject(new Error("Failed to load QR code"))
@@ -155,7 +174,7 @@ export class QRProcessor {
             location: code.location
           })
         } else {
-          reject(new Error("No QR code found in image"))
+          reject(new Error("No QR code found in image. Please ensure the image contains a clear, visible QR code."))
         }
       }
       img.onerror = () => reject(new Error("Failed to load image"))
@@ -169,6 +188,9 @@ export class QRProcessor {
     security: "WPA" | "WEP" | "nopass" = "WPA",
     hidden = false,
   ): string {
+    if (!ssid.trim()) {
+      throw new Error("WiFi SSID cannot be empty")
+    }
     return `WIFI:T:${security};S:${ssid};P:${password};H:${hidden ? "true" : "false"};;`
   }
 
@@ -205,6 +227,10 @@ export class QRProcessor {
     endDate?: string
     description?: string
   }): string {
+    if (!event.title.trim()) {
+      throw new Error("Event title cannot be empty")
+    }
+
     const vevent = [
       "BEGIN:VEVENT",
       `SUMMARY:${event.title}`,
@@ -229,6 +255,11 @@ export class QRProcessor {
     for (let i = 0; i < data.length; i++) {
       const item = data[i]
       try {
+        if (!item.content || item.content.trim() === "") {
+          console.warn(`Skipping empty content for item ${i + 1}`)
+          continue
+        }
+
         const qrDataURL = await this.generateQRCode(item.content, options)
         results.push({
           dataURL: qrDataURL,

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import { EnhancedAdBanner } from "@/components/ads/enhanced-ad-banner"
+import { AdBanner } from "@/components/ads/ad-banner"
 import { 
   Upload, 
   Download, 
@@ -24,10 +24,11 @@ import {
   RefreshCw,
   GripVertical,
   Eye,
-  EyeOff
+  EyeOff,
+  AlertCircle,
+  Info
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import Link from "next/link"
 
 interface PDFFile {
@@ -147,6 +148,19 @@ export function PDFToolsLayout({
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
 
+    // Validate file types
+    const invalidFiles = Array.from(uploadedFiles).filter(file => 
+      file.type !== "application/pdf"
+    )
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid file types",
+        description: `${invalidFiles.length} files are not PDF documents. Please upload PDF files only.`,
+        variant: "destructive"
+      })
+      return
+    }
     const newFiles: PDFFile[] = []
     
     for (let i = 0; i < uploadedFiles.length && i < maxFiles; i++) {
@@ -170,13 +184,26 @@ export function PDFToolsLayout({
       } catch (error) {
         toast({
           title: "Error loading PDF",
-          description: `Failed to load ${file.name}`,
+          description: `Failed to load ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive"
         })
       }
     }
 
+    if (newFiles.length === 0) {
+      toast({
+        title: "No valid PDFs",
+        description: "No valid PDF files were found to upload.",
+        variant: "destructive"
+      })
+      return
+    }
     setFiles(prev => [...prev, ...newFiles])
+    
+    toast({
+      title: "PDFs uploaded",
+      description: `${newFiles.length} PDF${newFiles.length > 1 ? 's' : ''} uploaded successfully`
+    })
   }
 
 
@@ -392,7 +419,7 @@ export function PDFToolsLayout({
           {files.length === 0 ? (
             <div className="h-full flex flex-col">
               <div className="p-4">
-                <EnhancedAdBanner position="header" showLabel />
+                <AdBanner position="header" showLabel />
               </div>
               
               <div className="flex-1 flex items-center justify-center p-6">
@@ -426,11 +453,10 @@ export function PDFToolsLayout({
           ) : (
             <div className="h-full flex flex-col">
               <div className="p-4 border-b">
-                <EnhancedAdBanner position="inline" showLabel />
+                <AdBanner position="inline" showLabel />
               </div>
 
               <div className="flex-1 p-6 overflow-auto">
-                <DragDropContext onDragEnd={onDragEnd}>
                   <div className="space-y-8">
                     {files.map((file, fileIndex) => (
                       <div key={file.id} className="bg-white rounded-lg shadow-sm border">
@@ -484,94 +510,69 @@ export function PDFToolsLayout({
                         </div>
 
                         {/* Enhanced Pages Grid */}
-                        <Droppable droppableId={`file-${fileIndex}`} direction="horizontal">
-                          {(provided) => (
-                            <div 
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className="p-6"
-                            >
-                              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-                                {file.pages.map((page, pageIndex) => (
-                                  <Draggable 
-                                    key={`${file.id}-${page.pageNumber}`}
-                                    draggableId={`${file.id}-${page.pageNumber}`}
-                                    index={pageIndex}
-                                    isDragDisabled={!allowPageReorder}
-                                  >
-                                    {(provided, snapshot) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        className={`relative group cursor-pointer transition-all duration-200 ${
-                                          snapshot.isDragging ? "scale-105 shadow-lg z-50" : ""
-                                        }`}
-                                      >
-                                        <div 
-                                          className={`relative border-2 rounded-lg overflow-hidden transition-all hover:shadow-md ${
-                                            page.selected 
-                                              ? "border-red-500 bg-red-50 shadow-md ring-2 ring-red-200" 
-                                              : "border-gray-200 hover:border-gray-300"
-                                          }`}
-                                          onClick={() => allowPageSelection && togglePageSelection(file.id, page.pageNumber)}
-                                        >
-                                          {/* Drag Handle */}
-                                          {allowPageReorder && (
-                                            <div 
-                                              {...provided.dragHandleProps}
-                                              className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded p-1 shadow-sm"
-                                            >
-                                              <GripVertical className="h-3 w-3 text-gray-600" />
-                                            </div>
-                                          )}
+                        <div className="p-6">
+                          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                            {file.pages.map((page, pageIndex) => (
+                              <div
+                                key={`${file.id}-${page.pageNumber}`}
+                                className="relative group cursor-pointer transition-all duration-200"
+                              >
+                                <div 
+                                  className={`relative border-2 rounded-lg overflow-hidden transition-all hover:shadow-md ${
+                                    page.selected 
+                                      ? "border-red-500 bg-red-50 shadow-md ring-2 ring-red-200" 
+                                      : "border-gray-200 hover:border-gray-300"
+                                  }`}
+                                  onClick={() => allowPageSelection && togglePageSelection(file.id, page.pageNumber)}
+                                >
+                                  {/* Drag Handle */}
+                                  {allowPageReorder && (
+                                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded p-1 shadow-sm cursor-move">
+                                      <GripVertical className="h-3 w-3 text-gray-600" />
+                                    </div>
+                                  )}
 
-                                          {/* Enhanced Page Thumbnail */}
-                                          <div className="aspect-[3/4] bg-white relative overflow-hidden">
-                                            <img 
-                                              src={page.thumbnail}
-                                              alt={`Page ${page.pageNumber}`}
-                                              className="w-full h-full object-contain"
-                                            />
-                                            
-                                            {/* Page overlay on hover */}
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-                                          </div>
+                                  {/* Enhanced Page Thumbnail */}
+                                  <div className="aspect-[3/4] bg-white relative overflow-hidden">
+                                    <img 
+                                      src={page.thumbnail}
+                                      alt={`Page ${page.pageNumber}`}
+                                      className="w-full h-full object-contain"
+                                    />
+                                    
+                                    {/* Page overlay on hover */}
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                                  </div>
 
-                                          {/* Enhanced Page Number */}
-                                          {showPageNumbers && (
-                                            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
-                                              <Badge variant="secondary" className="text-xs bg-white shadow-sm border">
-                                                {page.pageNumber}
-                                              </Badge>
-                                            </div>
-                                          )}
+                                  {/* Enhanced Page Number */}
+                                  {showPageNumbers && (
+                                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                                      <Badge variant="secondary" className="text-xs bg-white shadow-sm border">
+                                        {page.pageNumber}
+                                      </Badge>
+                                    </div>
+                                  )}
 
-                                          {/* Enhanced Selection Indicator */}
-                                          {allowPageSelection && (
-                                            <div className="absolute top-2 right-2">
-                                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-sm ${
-                                                page.selected 
-                                                  ? "bg-red-500 border-red-500 scale-110" 
-                                                  : "bg-white border-gray-300 hover:border-red-300"
-                                              }`}>
-                                                {page.selected && <CheckCircle className="h-4 w-4 text-white" />}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
+                                  {/* Enhanced Selection Indicator */}
+                                  {allowPageSelection && (
+                                    <div className="absolute top-2 right-2">
+                                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-sm ${
+                                        page.selected 
+                                          ? "bg-red-500 border-red-500 scale-110" 
+                                          : "bg-white border-gray-300 hover:border-red-300"
+                                      }`}>
+                                        {page.selected && <CheckCircle className="h-4 w-4 text-white" />}
                                       </div>
-                                    )}
-                                  </Draggable>
-                                ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </DragDropContext>
               </div>
             </div>
           )}
@@ -827,12 +828,37 @@ export function PDFToolsLayout({
           })}
 
           <div className="py-4">
-            <EnhancedAdBanner position="sidebar" showLabel />
+            <AdBanner position="sidebar" showLabel />
           </div>
         </div>
 
         {/* Enhanced Sidebar Footer */}
         <div className="p-6 border-t bg-gray-50 space-y-3">
+          {/* Processing Status */}
+          {isProcessing && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm font-medium text-blue-800">Processing PDF...</span>
+              </div>
+              <Progress value={66} className="h-2" />
+              <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
+            </div>
+          )}
+
+          {/* Ready Status */}
+          {!isProcessing && files.length > 0 && !downloadUrl && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2">
+                <Info className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-800">
+                  Ready to process {files.length} PDF{files.length > 1 ? 's' : ''}
+                  {allowPageSelection && selectedPages.size > 0 && ` (${selectedPages.size} pages selected)`}
+                </span>
+              </div>
+            </div>
+          )}
+
           <Button 
             onClick={handleProcess}
             disabled={isProcessing || files.length === 0}
@@ -851,22 +877,26 @@ export function PDFToolsLayout({
             )}
           </Button>
 
-          {isProcessing && (
-            <div className="space-y-2">
-              <Progress value={66} className="h-2" />
-              <p className="text-xs text-gray-600 text-center">Processing your PDF...</p>
-            </div>
-          )}
 
           {downloadUrl && (
-            <Button 
-              onClick={handleDownload}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base font-semibold"
-              size="lg"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download {files.length > 1 ? "ZIP" : "PDF"}
-            </Button>
+            <div className="space-y-2">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">Processing complete!</span>
+                </div>
+                <p className="text-xs text-green-600">Your PDF is ready for download</p>
+              </div>
+              
+              <Button 
+                onClick={handleDownload}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base font-semibold"
+                size="lg"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download {files.length > 1 ? "ZIP" : "PDF"}
+              </Button>
+            </div>
           )}
 
           {files.length > 0 && (

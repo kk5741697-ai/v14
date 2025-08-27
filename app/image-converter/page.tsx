@@ -81,6 +81,36 @@ const convertOptions = [
     section: "Transform",
   },
   {
+    key: "brightness",
+    label: "Brightness",
+    type: "slider" as const,
+    defaultValue: 100,
+    min: 0,
+    max: 200,
+    step: 5,
+    section: "Adjustments",
+  },
+  {
+    key: "contrast",
+    label: "Contrast",
+    type: "slider" as const,
+    defaultValue: 100,
+    min: 0,
+    max: 200,
+    step: 5,
+    section: "Adjustments",
+  },
+  {
+    key: "saturation",
+    label: "Saturation",
+    type: "slider" as const,
+    defaultValue: 100,
+    min: 0,
+    max: 200,
+    step: 5,
+    section: "Adjustments",
+  },
+  {
     key: "autoOptimize",
     label: "Auto Optimize Quality",
     type: "checkbox" as const,
@@ -152,6 +182,11 @@ async function convertImages(files: any[], options: any) {
             width: options.resizeWidth > 0 ? options.resizeWidth : undefined,
             height: options.resizeHeight > 0 ? options.resizeHeight : undefined,
             maintainAspectRatio: options.maintainAspectRatio,
+            filters: {
+              brightness: options.brightness,
+              contrast: options.contrast,
+              saturation: options.saturation,
+            }
           }
         )
 
@@ -189,7 +224,7 @@ export default function ImageConverterPage() {
   return (
     <ImageToolsLayout
       title="Image Converter"
-      description="Convert images between different formats including JPEG, PNG, and WebP. Apply rotation and flipping during conversion."
+      description="Convert images between different formats including JPEG, PNG, and WebP. Apply rotation, flipping, and adjustments during conversion."
       icon={RefreshCw}
       toolType="convert"
       processFunction={convertImages}

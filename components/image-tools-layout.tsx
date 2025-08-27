@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import { EnhancedAdBanner } from "@/components/ads/enhanced-ad-banner"
+import { AdBanner } from "@/components/ads/ad-banner"
 import { 
   Upload, 
   Download, 
@@ -31,7 +31,9 @@ import {
   Crop,
   Maximize2,
   Minimize2,
-  Settings
+  Settings,
+  AlertCircle,
+  Info
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -174,6 +176,19 @@ export function ImageToolsLayout({
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
 
+    // Validate file types first
+    const invalidFiles = Array.from(uploadedFiles).filter(file => 
+      !supportedFormats.includes(file.type)
+    )
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid file types",
+        description: `${invalidFiles.length} files are not supported. Please upload ${supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')} files only.`,
+        variant: "destructive"
+      })
+      return
+    }
     if (singleFileOnly && files.length > 0) {
       setFiles([])
       setProcessedFiles([])
@@ -210,10 +225,23 @@ export function ImageToolsLayout({
       }
     }
 
+    if (newFiles.length === 0) {
+      toast({
+        title: "No valid images",
+        description: "No valid image files were found to upload.",
+        variant: "destructive"
+      })
+      return
+    }
     setFiles(prev => singleFileOnly ? newFiles : [...prev, ...newFiles])
     
     if (newFiles.length > 0) {
       setSelectedFile(newFiles[0].id)
+      
+      toast({
+        title: "Images uploaded",
+        description: `${newFiles.length} image${newFiles.length > 1 ? 's' : ''} uploaded successfully`
+      })
     }
   }
 
@@ -570,7 +598,7 @@ export function ImageToolsLayout({
           {files.length === 0 ? (
             <div className="h-full flex flex-col">
               <div className="p-4">
-                <EnhancedAdBanner position="header" showLabel />
+                <AdBanner position="header" showLabel />
               </div>
               
               <div className="flex-1 flex items-center justify-center p-6">
@@ -606,14 +634,13 @@ export function ImageToolsLayout({
                       </p>
                     </div>
                   )}
-                  </p>
                 </div>
               </div>
             </div>
           ) : (
             <div className="h-full flex flex-col">
               <div className="p-4 border-b">
-                <EnhancedAdBanner position="inline" showLabel />
+                <AdBanner position="inline" showLabel />
               </div>
 
               <div 
@@ -724,6 +751,15 @@ export function ImageToolsLayout({
                           <FlipVertical className="h-3 w-3" />
                         </Button>
                       </div>
+
+                       {/* Image Info Overlay */}
+                       <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="flex items-center space-x-4">
+                           <span>{currentFile.dimensions.width} × {currentFile.dimensions.height}</span>
+                           <span>{formatFileSize(currentFile.size)}</span>
+                           <span>{currentFile.name.split('.').pop()?.toUpperCase()}</span>
+                         </div>
+                       </div>
                     </div>
                   </div>
                 )}
@@ -958,12 +994,34 @@ export function ImageToolsLayout({
 
           {/* Ad Space */}
           <div className="py-4">
-            <EnhancedAdBanner position="sidebar" showLabel />
+            <AdBanner position="sidebar" showLabel />
           </div>
         </div>
 
         {/* Enhanced Sidebar Footer */}
         <div className="p-6 border-t bg-gray-50 space-y-3">
+          {/* Processing Status */}
+          {isProcessing && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm font-medium text-blue-800">Processing images...</span>
+              </div>
+              <Progress value={66} className="h-2" />
+              <p className="text-xs text-blue-600 mt-1">This may take a few moments</p>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {!isProcessing && files.length > 0 && processedFiles.length === 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2">
+                <Info className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-800">Ready to process {files.length} image{files.length > 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          )}
+
           <Button 
             onClick={handleProcess}
             disabled={isProcessing || files.length === 0}
@@ -982,22 +1040,28 @@ export function ImageToolsLayout({
             )}
           </Button>
 
-          {isProcessing && (
-            <div className="space-y-2">
-              <Progress value={66} className="h-2" />
-              <p className="text-xs text-gray-600 text-center">Processing your images...</p>
-            </div>
-          )}
 
           {processedFiles.length > 0 && (
-            <Button 
-              onClick={handleDownload}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base font-semibold"
-              size="lg"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download {processedFiles.length > 1 ? "ZIP" : "Image"}
-            </Button>
+            <div className="space-y-2">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">Processing complete!</span>
+                </div>
+                <p className="text-xs text-green-600">
+                  {processedFiles.length} image{processedFiles.length > 1 ? 's' : ''} processed successfully
+                </p>
+              </div>
+              
+              <Button 
+                onClick={handleDownload}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base font-semibold"
+                size="lg"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download {processedFiles.length > 1 ? "ZIP" : "Image"}
+              </Button>
+            </div>
           )}
 
           {files.length > 0 && (
@@ -1014,6 +1078,19 @@ export function ImageToolsLayout({
                 <div className="flex justify-between text-green-600">
                   <span>Processed size:</span>
                   <span>{formatFileSize(processedFiles.reduce((sum, file) => sum + (file.processedSize || file.size), 0))}</span>
+                </div>
+              )}
+              {processedFiles.length > 0 && (
+                <div className="flex justify-between text-blue-600">
+                  <span>Size reduction:</span>
+                  <span>
+                    {(() => {
+                      const originalSize = files.reduce((sum, file) => sum + file.size, 0)
+                      const processedSize = processedFiles.reduce((sum, file) => sum + (file.processedSize || file.size), 0)
+                      const reduction = ((originalSize - processedSize) / originalSize) * 100
+                      return reduction > 0 ? `${reduction.toFixed(1)}%` : "0%"
+                    })()}
+                  </span>
                 </div>
               )}
             </div>

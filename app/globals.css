@@ -157,7 +157,7 @@
 }
 
 .crop-handle {
-  @apply absolute w-2 h-2 bg-blue-500 rounded-full border border-white shadow-sm;
+  @apply absolute w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md hover:scale-125 transition-transform cursor-pointer;
 }
 
 /* File upload zone enhancements */
@@ -198,6 +198,39 @@
   100% { background-position: 200% 0; }
 }
 
+/* Enhanced button animations */
+.btn-enhanced {
+  @apply transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95;
+}
+
+/* Tool card hover effects */
+.tool-card {
+  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-2 hover:scale-105;
+}
+
+/* Processing animations */
+.processing-pulse {
+  animation: processing-pulse 2s ease-in-out infinite;
+}
+
+@keyframes processing-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Enhanced QR code styles */
+.qr-preview {
+  @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+}
+
+/* PDF page thumbnail enhancements */
+.pdf-page-thumbnail {
+  @apply transition-all duration-200 hover:scale-105 hover:shadow-md;
+}
+
+.pdf-page-selected {
+  @apply ring-2 ring-red-500 ring-offset-2 bg-red-50;
+}
 /* Mobile-first responsive grid */
 .responsive-grid {
   @apply grid gap-4;

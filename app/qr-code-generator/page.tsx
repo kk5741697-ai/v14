@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { QRProcessor } from "@/lib/qr-processor"
+import { QRProcessor } from "@/lib/processors/qr-processor"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -28,7 +29,9 @@ import {
   CheckCircle,
   Globe,
   MapPin,
-  Settings
+  Settings,
+  AlertCircle,
+  Copy
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
@@ -67,26 +70,39 @@ export default function QRCodeGeneratorPage() {
   ]
 
   const generateQRContent = () => {
+    try {
     switch (activeType) {
       case "url":
       case "text":
+          if (!content.trim()) return ""
         return content
       case "email":
+          if (!emailData.email.trim()) return ""
         return `mailto:${emailData.email}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`
       case "phone":
+          if (!phoneData.phone.trim()) return ""
         return `tel:${phoneData.phone}`
       case "sms":
+          if (!smsData.phone.trim()) return ""
         return `sms:${smsData.phone}?body=${encodeURIComponent(smsData.message)}`
       case "wifi":
+          if (!wifiData.ssid.trim()) return ""
         return QRProcessor.generateWiFiQR(wifiData.ssid, wifiData.password, wifiData.security as any, wifiData.hidden)
       case "vcard":
+          if (!vcardData.firstName && !vcardData.lastName && !vcardData.email) return ""
         return QRProcessor.generateVCardQR(vcardData)
       case "event":
+          if (!eventData.title.trim()) return ""
         return QRProcessor.generateEventQR(eventData)
       case "location":
+          if (!content.trim()) return ""
         return `geo:${content}`
       default:
         return content
+    }
+    } catch (error) {
+      console.error("Error generating QR content:", error)
+      return ""
     }
   }
 
@@ -94,7 +110,10 @@ export default function QRCodeGeneratorPage() {
     const generateQR = async () => {
       try {
         const qrContent = generateQRContent()
-        if (!qrContent.trim()) return
+        if (!qrContent.trim()) {
+          setQrDataUrl("")
+          return
+        }
 
         const qrOptions = {
           width: qrSize[0],
@@ -116,9 +135,10 @@ export default function QRCodeGeneratorPage() {
 
       } catch (error) {
         console.error("Failed to generate QR code:", error)
+        setQrDataUrl("")
         toast({
           title: "QR Generation Failed",
-          description: "Please check your input and try again",
+          description: error instanceof Error ? error.message : "Please check your input and try again",
           variant: "destructive"
         })
       }
@@ -143,8 +163,26 @@ export default function QRCodeGeneratorPage() {
 
   const downloadQR = async (format: string) => {
     try {
+      if (!qrDataUrl && format !== "svg") {
+        toast({
+          title: "No QR code to download",
+          description: "Please generate a QR code first",
+          variant: "destructive"
+        })
+        return
+      }
+
       if (format === "svg") {
         const qrContent = generateQRContent()
+        if (!qrContent.trim()) {
+          toast({
+            title: "No content to generate QR code",
+            description: "Please enter content first",
+            variant: "destructive"
+          })
+          return
+        }
+        
         const qrOptions = {
           width: qrSize[0],
           color: { dark: foregroundColor, light: backgroundColor },
@@ -159,7 +197,6 @@ export default function QRCodeGeneratorPage() {
         link.click()
         URL.revokeObjectURL(url)
       } else {
-        if (!qrDataUrl) return
         const link = document.createElement("a")
         link.download = `qr-code.${format}`
         link.href = qrDataUrl
@@ -174,7 +211,7 @@ export default function QRCodeGeneratorPage() {
       console.error("Failed to download QR code:", error)
       toast({
         title: "Download failed",
-        description: "Unable to download QR code",
+        description: error instanceof Error ? error.message : "Unable to download QR code",
         variant: "destructive"
       })
     }
@@ -715,15 +752,31 @@ export default function QRCodeGeneratorPage() {
               {/* QR Code Display */}
               <div className="bg-white p-8 rounded-xl shadow-lg text-center border border-gray-200">
                 {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt="QR Code"
-                    className="mx-auto max-w-full h-auto rounded-lg shadow-md"
-                    style={{ maxWidth: "300px" }}
-                  />
+                  <div className="relative">
+                    <img
+                      src={qrDataUrl}
+                      alt="QR Code"
+                      className="mx-auto max-w-full h-auto rounded-lg shadow-md"
+                      style={{ maxWidth: "300px" }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generateQRContent())
+                        toast({ title: "Content copied", description: "QR code content copied to clipboard" })
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
                 ) : (
                   <div className="w-64 h-64 mx-auto bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-inner">
-                    <QrCode className="h-16 w-16 text-gray-400" />
+                    <div className="text-center">
+                      <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Enter content to generate QR code</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -754,6 +807,7 @@ export default function QRCodeGeneratorPage() {
               <div className="space-y-4">
                 <Button 
                   onClick={() => downloadQR("png")} 
+                  disabled={!qrDataUrl}
                   className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                   size="lg"
                 >
@@ -766,6 +820,7 @@ export default function QRCodeGeneratorPage() {
                     variant="outline" 
                     size="lg" 
                     onClick={() => downloadQR("svg")}
+                    disabled={!generateQRContent().trim()}
                     className="text-blue-500 border-blue-400 hover:bg-blue-50 font-semibold py-3 rounded-lg transition-all hover:scale-105"
                   >
                     .SVG
@@ -774,6 +829,7 @@ export default function QRCodeGeneratorPage() {
                     variant="outline" 
                     size="lg" 
                     onClick={() => downloadQR("pdf")}
+                    disabled={!qrDataUrl}
                     className="text-orange-500 border-orange-400 hover:bg-orange-50 font-semibold py-3 rounded-lg transition-all hover:scale-105"
                   >
                     .PDF*
@@ -782,6 +838,7 @@ export default function QRCodeGeneratorPage() {
                     variant="outline" 
                     size="lg" 
                     onClick={() => downloadQR("eps")}
+                    disabled={!qrDataUrl}
                     className="text-purple-500 border-purple-400 hover:bg-purple-50 font-semibold py-3 rounded-lg transition-all hover:scale-105"
                   >
                     .EPS*
@@ -808,8 +865,22 @@ export default function QRCodeGeneratorPage() {
                       <span>Error Correction:</span>
                       <span className="font-medium">{errorCorrection}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span>QR Size:</span>
+                      <span className="font-medium">{qrSize[0]} × {qrSize[0]} px</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Content Validation */}
+                {!generateQRContent().trim() && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <span className="text-sm text-amber-800">Please enter content to generate QR code</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

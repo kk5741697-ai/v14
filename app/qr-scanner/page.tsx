@@ -7,7 +7,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { QRProcessor } from "@/lib/qr-processor"
+import { QRProcessor } from "@/lib/processors/qr-processor"
 import { ScanLine, Upload, Copy, ExternalLink } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 

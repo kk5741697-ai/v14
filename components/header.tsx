@@ -150,7 +150,7 @@ export function Header() {
               <Link
                 key={tool.name}
                 href={tool.href}
-                className={`text-sm font-semibold text-gray-700 hover:${brandConfig.color} transition-all duration-200 px-3 py-2 rounded-lg hover:bg-gray-50`}
+                className="text-sm font-semibold text-gray-700 hover:text-blue-600 transition-all duration-200 px-3 py-2 rounded-lg hover:bg-gray-50"
               >
                 {tool.name}
               </Link>
@@ -158,7 +158,7 @@ export function Header() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className={`text-sm font-semibold text-gray-700 hover:${brandConfig.color} px-3 py-2 rounded-lg hover:bg-gray-50`}>
+                <Button variant="ghost" className="text-sm font-semibold text-gray-700 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-gray-50">
                   MORE TOOLS
                   <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
@@ -216,7 +216,7 @@ export function Header() {
                   <Link
                     key={tool.name}
                     href={tool.href}
-                    className={`block px-4 py-3 text-sm font-semibold text-gray-700 hover:${brandConfig.color} hover:bg-gray-50 rounded-lg transition-all duration-200`}
+                    className="block px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {tool.name}
@@ -226,7 +226,7 @@ export function Header() {
                   <Link
                     key={tool.name}
                     href={tool.href}
-                    className={`block px-4 py-3 text-sm font-semibold text-gray-700 hover:${brandConfig.color} hover:bg-gray-50 rounded-lg transition-all duration-200`}
+                    className="block px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {tool.name}

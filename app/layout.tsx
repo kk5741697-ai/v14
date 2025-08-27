@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description:
     "Your online photo editor is here and forever free! Compress, resize, crop, convert images and more with 300+ professional tools.",
   generator: "PixoraTools",
-  keywords: "image tools, pdf tools, qr generator, online tools, photo editor, image converter, pdf merger",
+  keywords: "image tools, pdf tools, qr generator, online tools, photo editor, image converter, pdf merger, compress image, resize image, crop image, convert image, background remover",
 }
 
 export default function RootLayout({

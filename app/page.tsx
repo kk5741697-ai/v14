@@ -137,18 +137,18 @@ export default function HomePage() {
           <div className="mb-8">
             <div className="inline-flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-full px-6 py-2 border border-gray-200 shadow-lg mb-6">
               <Wrench className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-semibold text-gray-700">300+ Professional Tools</span>
+              <span className="text-sm font-semibold text-gray-700">2000+ Professional Tools</span>
             </div>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-heading font-bold text-gray-900 mb-6 leading-tight">
-            Every Tool You Need
+            Every Tool You Could Want
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              In One Place
+              To Edit Images in Bulk
             </span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 mb-16 max-w-4xl mx-auto leading-relaxed">
-            Transform, optimize, and convert your files with our comprehensive suite of professional tools. 
+            Your online photo editor is here and forever free! Compress, resize, crop, convert images and more with 300+ professional tools.
             <span className="font-semibold text-gray-800">Fast, secure, and completely free.</span>
           </p>
 
@@ -243,7 +243,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Always Available</h3>
               <p className="text-gray-600">
-                Works offline and across all devices. No installation or registration required
+                52 professional tools for formatting, validating, and converting text and code
               </p>
             </div>
           </div>

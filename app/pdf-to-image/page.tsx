@@ -2,8 +2,7 @@
 
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { ImageIcon } from "lucide-react"
-import { PDFProcessor } from "@/lib/pdf-processor"
-import JSZip from "jszip"
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 const convertOptions = [
   {
@@ -68,6 +67,7 @@ async function convertPDFToImage(files: any[], options: any) {
       colorMode: options.colorMode,
     }
 
+    const JSZip = (await import("jszip")).default
     const zip = new JSZip()
 
     for (const file of files) {

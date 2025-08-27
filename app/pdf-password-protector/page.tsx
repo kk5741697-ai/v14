@@ -2,8 +2,7 @@
 
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Lock } from "lucide-react"
-import { PDFProcessor } from "@/lib/pdf-processor"
-import JSZip from "jszip"
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 const protectOptions = [
   {
@@ -91,6 +90,7 @@ async function protectPDF(files: any[], options: any) {
       }
     } else {
       // Multiple files - create ZIP
+      const JSZip = (await import("jszip")).default
       const zip = new JSZip()
 
       for (const file of files) {

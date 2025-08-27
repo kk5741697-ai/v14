@@ -23,8 +23,8 @@ export function ToolCard({
   isPremium = false,
 }: ToolCardProps) {
   return (
-    <a href={href} className="group">
-      <Card className="h-full transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-border hover:border-accent/50">
+    <Link href={href} className="group">
+      <Card className="h-full tool-card border-border hover:border-accent/50">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
@@ -58,6 +58,6 @@ export function ToolCard({
           <CardDescription className="text-sm leading-relaxed">{description}</CardDescription>
         </CardContent>
       </Card>
-    </a>
+    </Link>
   )
 }

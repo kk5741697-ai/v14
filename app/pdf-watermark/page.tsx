@@ -2,8 +2,7 @@
 
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Droplets } from "lucide-react"
-import { PDFProcessor } from "@/lib/pdf-processor"
-import JSZip from "jszip"
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 const watermarkOptions = [
   {
@@ -93,6 +92,7 @@ async function addWatermarkToPDF(files: any[], options: any) {
       }
     } else {
       // Multiple files - create ZIP
+      const JSZip = (await import("jszip")).default
       const zip = new JSZip()
 
       for (const file of files) {

@@ -17,18 +17,6 @@ const splitOptions = [
       { value: "pages", label: "Extract Selected Pages" },
       { value: "size", label: "Equal Parts" },
     ],
-    section: "Split Settings",
-  },
-  {
-    key: "extractMode",
-    label: "Extract Mode",
-    type: "select" as const,
-    defaultValue: "all",
-    selectOptions: [
-      { value: "all", label: "Extract all pages" },
-      { value: "pages", label: "Select pages" },
-    ],
-    section: "Split Settings",
     condition: (options) => options.splitMode === "pages",
   },
   {
@@ -154,6 +142,7 @@ async function splitPDF(files: any[], options: any) {
       }
     } else {
       // Create ZIP with split PDFs
+      const JSZip = (await import("jszip")).default
       const zip = new JSZip()
       splitResults.forEach((pdfBytes, index) => {
         const range = ranges[index]

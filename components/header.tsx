@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { TOOLS_REGISTRY } from "@/lib/tools-registry"
 import { useRouter } from "next/navigation"
 
 // All available tools for search

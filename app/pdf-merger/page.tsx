@@ -1,9 +1,8 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { FileType } from "lucide-react"
 import { PDFProcessor } from "@/lib/pdf-processor"
-import JSZip from "jszip"
 
 const mergeOptions = [
   {
@@ -11,12 +10,14 @@ const mergeOptions = [
     label: "Add Bookmarks",
     type: "checkbox" as const,
     defaultValue: true,
+    section: "Options",
   },
   {
     key: "preserveMetadata",
     label: "Preserve Metadata",
     type: "checkbox" as const,
     defaultValue: true,
+    section: "Options",
   },
   {
     key: "mergeMode",
@@ -28,6 +29,7 @@ const mergeOptions = [
       { value: "interleave", label: "Interleave Pages" },
       { value: "custom", label: "Custom Order" },
     ],
+    section: "Merge Settings",
   },
 ]
 
@@ -40,7 +42,7 @@ async function mergePDFs(files: any[], options: any) {
       }
     }
 
-    const fileObjects = files.map((f: any) => f.originalFile)
+    const fileObjects = files.map((f: any) => f.originalFile || f.file)
     const mergedPdfBytes = await PDFProcessor.mergePDFs(fileObjects, {
       addBookmarks: options.addBookmarks,
       preserveMetadata: options.preserveMetadata
@@ -63,7 +65,7 @@ async function mergePDFs(files: any[], options: any) {
 
 export default function PDFMergerPage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="Merge PDF"
       description="Combine multiple PDF files into one document with custom page ordering and bookmark preservation. Perfect for merging reports, presentations, and documents."
       icon={FileType}

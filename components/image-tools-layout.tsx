@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
+import { Checkbox } from "@/components/ui/checkbox"
 import { EnhancedAdBanner } from "@/components/ads/enhanced-ad-banner"
 import { 
   Upload, 
@@ -23,7 +24,13 @@ import {
   CheckCircle,
   Undo,
   Redo,
-  RefreshCw
+  RefreshCw,
+  ZoomIn,
+  ZoomOut,
+  Move,
+  Crop,
+  Maximize2,
+  Minimize2
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -31,6 +38,7 @@ import Link from "next/link"
 interface ImageFile {
   id: string
   file: File
+  originalFile?: File
   name: string
   size: number
   preview: string
@@ -42,30 +50,35 @@ interface ImageFile {
   cropArea?: { x: number; y: number; width: number; height: number }
 }
 
-interface SimpleToolOption {
+interface ToolOption {
   key: string
   label: string
-  type: "select" | "slider" | "input"
+  type: "select" | "slider" | "input" | "checkbox" | "color" | "text"
   defaultValue: any
   min?: number
   max?: number
   step?: number
-  options?: Array<{ value: string; label: string }>
+  selectOptions?: Array<{ value: string; label: string }>
+  section?: string
+  condition?: (options: any) => boolean
 }
 
-interface SimpleImageToolLayoutProps {
+interface ImageToolsLayoutProps {
   title: string
   description: string
   icon: any
-  toolType: "resize" | "compress" | "convert" | "crop" | "rotate" | "watermark"
+  toolType: "resize" | "compress" | "convert" | "crop" | "rotate" | "watermark" | "background" | "filters"
   processFunction: (files: ImageFile[], options: any) => Promise<{ success: boolean; processedFiles?: ImageFile[]; error?: string }>
-  options: SimpleToolOption[]
+  options: ToolOption[]
   maxFiles?: number
   singleFileOnly?: boolean
+  allowBatchProcessing?: boolean
+  supportedFormats?: string[]
+  outputFormats?: string[]
   presets?: Array<{ name: string; values: any }>
 }
 
-export function SimpleImageToolLayout({
+export function ImageToolsLayout({
   title,
   description,
   icon: Icon,
@@ -74,8 +87,11 @@ export function SimpleImageToolLayout({
   options,
   maxFiles = 20,
   singleFileOnly = false,
+  allowBatchProcessing = true,
+  supportedFormats = ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  outputFormats = ["jpeg", "png", "webp"],
   presets = []
-}: SimpleImageToolLayoutProps) {
+}: ImageToolsLayoutProps) {
   const [files, setFiles] = useState<ImageFile[]>([])
   const [toolOptions, setToolOptions] = useState<Record<string, any>>({})
   const [isProcessing, setIsProcessing] = useState(false)
@@ -86,9 +102,12 @@ export function SimpleImageToolLayout({
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [history, setHistory] = useState<Array<{ files: ImageFile[]; options: any }>>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const imageRef = useRef<HTMLImageElement>(null)
+  const [zoomLevel, setZoomLevel] = useState(100)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
 
   // Initialize options with defaults
   useEffect(() => {
@@ -98,6 +117,34 @@ export function SimpleImageToolLayout({
     })
     setToolOptions(defaultOptions)
   }, [options])
+
+  // Auto-save to localStorage
+  useEffect(() => {
+    if (files.length > 0 || Object.keys(toolOptions).length > 0) {
+      const saveData = {
+        files: files.map(f => ({ ...f, file: null, originalFile: null })), // Don't save File objects
+        toolOptions,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(`pixora-${toolType}-autosave`, JSON.stringify(saveData))
+    }
+  }, [files, toolOptions, toolType])
+
+  // Load auto-save on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`pixora-${toolType}-autosave`)
+    if (saved) {
+      try {
+        const saveData = JSON.parse(saved)
+        // Only restore if less than 1 hour old
+        if (Date.now() - saveData.timestamp < 3600000) {
+          setToolOptions(saveData.toolOptions || {})
+        }
+      } catch (error) {
+        console.warn("Failed to restore auto-save:", error)
+      }
+    }
+  }, [toolType])
 
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
@@ -112,7 +159,7 @@ export function SimpleImageToolLayout({
     
     for (let i = 0; i < maxFilesToProcess; i++) {
       const file = uploadedFiles[i]
-      if (!file.type.startsWith("image/")) continue
+      if (!supportedFormats.includes(file.type)) continue
 
       try {
         const preview = await createImagePreview(file)
@@ -121,6 +168,7 @@ export function SimpleImageToolLayout({
         const imageFile: ImageFile = {
           id: `${file.name}-${Date.now()}-${i}`,
           file,
+          originalFile: file,
           name: file.name,
           size: file.size,
           preview,
@@ -218,6 +266,8 @@ export function SimpleImageToolLayout({
     setCropSelection(null)
     setHistory([])
     setHistoryIndex(-1)
+    setZoomLevel(100)
+    setPanOffset({ x: 0, y: 0 })
     
     const defaultOptions: Record<string, any> = {}
     options.forEach(option => {
@@ -225,13 +275,15 @@ export function SimpleImageToolLayout({
     })
     setToolOptions(defaultOptions)
     
+    localStorage.removeItem(`pixora-${toolType}-autosave`)
+    
     toast({
       title: "Tool reset",
       description: "All files and settings have been reset"
     })
   }
 
-  // Crop functionality for crop tool
+  // Enhanced crop functionality
   const handleCropStart = (e: React.MouseEvent<HTMLImageElement>) => {
     if (toolType !== "crop") return
     
@@ -273,6 +325,40 @@ export function SimpleImageToolLayout({
       ))
       saveToHistory()
     }
+  }
+
+  // Pan and zoom functionality
+  const handlePanStart = (e: React.MouseEvent) => {
+    if (toolType === "crop") return
+    setIsPanning(true)
+    setLastPanPoint({ x: e.clientX, y: e.clientY })
+  }
+
+  const handlePanMove = (e: React.MouseEvent) => {
+    if (!isPanning) return
+    
+    const deltaX = e.clientX - lastPanPoint.x
+    const deltaY = e.clientY - lastPanPoint.y
+    
+    setPanOffset(prev => ({
+      x: prev.x + deltaX,
+      y: prev.y + deltaY
+    }))
+    
+    setLastPanPoint({ x: e.clientX, y: e.clientY })
+  }
+
+  const handlePanEnd = () => {
+    setIsPanning(false)
+  }
+
+  const handleZoom = (delta: number) => {
+    setZoomLevel(prev => Math.max(25, Math.min(400, prev + delta)))
+  }
+
+  const resetView = () => {
+    setZoomLevel(100)
+    setPanOffset({ x: 0, y: 0 })
   }
 
   const handleProcess = async () => {
@@ -362,12 +448,20 @@ export function SimpleImageToolLayout({
 
   const currentFile = selectedFile ? files.find(f => f.id === selectedFile) : files[0]
 
+  // Group options by section
+  const groupedOptions = options.reduce((acc, option) => {
+    const section = option.section || "General"
+    if (!acc[section]) acc[section] = []
+    acc[section].push(option)
+    return acc
+  }, {} as Record<string, ToolOption[]>)
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-      {/* Left Canvas - Image Preview */}
+      {/* Left Canvas - Enhanced Image Preview */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+        {/* Enhanced Header */}
+        <div className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-4">
             <Link href="/">
               <Button variant="ghost" size="sm">
@@ -409,6 +503,20 @@ export function SimpleImageToolLayout({
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
+            {currentFile && (
+              <div className="flex items-center space-x-1 border rounded-md">
+                <Button variant="ghost" size="sm" onClick={() => handleZoom(-25)}>
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-sm px-2">{zoomLevel}%</span>
+                <Button variant="ghost" size="sm" onClick={() => handleZoom(25)}>
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetView}>
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -422,7 +530,7 @@ export function SimpleImageToolLayout({
               
               <div className="flex-1 flex items-center justify-center p-6">
                 <div 
-                  className="max-w-md w-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-gray-400 transition-colors p-12"
+                  className="max-w-md w-full border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200 p-12"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onClick={() => fileInputRef.current?.click()}
@@ -430,12 +538,12 @@ export function SimpleImageToolLayout({
                   <Upload className="h-16 w-16 mb-4 text-gray-400" />
                   <h3 className="text-xl font-medium mb-2">Drop images here</h3>
                   <p className="text-gray-400 mb-4">or click to browse</p>
-                  <Button>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
                     <Upload className="h-4 w-4 mr-2" />
-                    Choose Images
+                    Select Images
                   </Button>
                   <p className="text-xs text-gray-400 mt-4">
-                    Supports: JPG, PNG, WebP, GIF
+                    Supports: {supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
                   </p>
                   {singleFileOnly && (
                     <p className="text-xs text-blue-600 mt-2 font-medium">
@@ -451,25 +559,34 @@ export function SimpleImageToolLayout({
                 <EnhancedAdBanner position="inline" showLabel />
               </div>
 
-              <div className="flex-1 flex items-center justify-center p-6 relative">
+              <div 
+                ref={canvasRef}
+                className="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-gray-100"
+                onMouseDown={handlePanStart}
+                onMouseMove={handlePanMove}
+                onMouseUp={handlePanEnd}
+                onMouseLeave={handlePanEnd}
+                style={{ cursor: isPanning ? "grabbing" : toolType === "crop" ? "crosshair" : "grab" }}
+              >
                 {currentFile && (
-                  <div className="relative max-w-full max-h-full">
+                  <div className="relative">
                     <div 
-                      className="relative inline-block max-w-[calc(100vw-400px)] max-h-[calc(100vh-200px)]"
+                      className="relative inline-block transition-transform duration-200"
                       style={{ 
+                        transform: `scale(${zoomLevel / 100}) translate(${panOffset.x}px, ${panOffset.y}px)`,
                         maxWidth: "calc(100vw - 400px)",
                         maxHeight: "calc(100vh - 200px)"
                       }}
                     >
                       <img
-                        ref={imageRef}
                         src={currentFile.processedPreview || currentFile.preview}
                         alt={currentFile.name}
-                        className="w-full h-full object-contain border border-gray-300 rounded-lg shadow-lg"
+                        className="w-full h-full object-contain border border-gray-300 rounded-lg shadow-lg bg-white"
                         style={{ 
-                          cursor: toolType === "crop" ? "crosshair" : "default",
                           maxWidth: "100%",
-                          maxHeight: "100%"
+                          maxHeight: "100%",
+                          userSelect: "none",
+                          pointerEvents: toolType === "crop" ? "auto" : "none"
                         }}
                         onMouseDown={handleCropStart}
                         onMouseMove={handleCropMove}
@@ -478,7 +595,7 @@ export function SimpleImageToolLayout({
                         draggable={false}
                       />
                       
-                      {/* Crop Overlay */}
+                      {/* Enhanced Crop Overlay */}
                       {toolType === "crop" && cropSelection && (
                         <div
                           className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
@@ -489,20 +606,21 @@ export function SimpleImageToolLayout({
                             height: `${cropSelection.height}%`
                           }}
                         >
-                          {/* Crop Handles */}
-                          <div className="absolute -top-1 -left-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-                          <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+                          {/* Enhanced Crop Handles */}
+                          <div className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-nw-resize"></div>
+                          <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-ne-resize"></div>
+                          <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-sw-resize"></div>
+                          <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-se-resize"></div>
                           
-                          <div className="absolute -top-8 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          {/* Crop Info */}
+                          <div className="absolute -top-10 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-md">
                             {Math.round(cropSelection.width)}% × {Math.round(cropSelection.height)}%
                           </div>
                         </div>
                       )}
                       
                       {/* Quick Actions Overlay */}
-                      <div className="absolute top-4 right-4 flex space-x-2 opacity-0 hover:opacity-100 transition-opacity">
+                      <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
                         <Button size="sm" variant="secondary" onClick={() => {}}>
                           <RotateCcw className="h-3 w-3" />
                         </Button>
@@ -520,12 +638,51 @@ export function SimpleImageToolLayout({
                   </div>
                 )}
               </div>
+
+              {/* File Thumbnails Bar */}
+              {files.length > 1 && (
+                <div className="border-t bg-white p-4">
+                  <div className="flex space-x-3 overflow-x-auto">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className={`relative flex-shrink-0 cursor-pointer transition-all duration-200 ${
+                          selectedFile === file.id 
+                            ? "ring-2 ring-blue-500 scale-105" 
+                            : "hover:scale-105 hover:shadow-md"
+                        }`}
+                        onClick={() => setSelectedFile(file.id)}
+                      >
+                        <img
+                          src={file.processedPreview || file.preview}
+                          alt={file.name}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 w-5 h-5 p-0 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeFile(file.id)
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        {file.processed && (
+                          <CheckCircle className="absolute -bottom-1 -right-1 w-4 h-4 text-green-600 bg-white rounded-full" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Right Sidebar - Simplified */}
+      {/* Right Sidebar - Enhanced */}
       <div className="w-80 bg-white border-l shadow-lg flex flex-col">
         {/* Sidebar Header */}
         <div className="px-6 py-4 border-b bg-gray-50">
@@ -538,7 +695,7 @@ export function SimpleImageToolLayout({
 
         {/* Sidebar Content */}
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          {/* Presets */}
+          {/* Quick Presets */}
           {presets.length > 0 && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Quick Presets</Label>
@@ -552,7 +709,7 @@ export function SimpleImageToolLayout({
                       setToolOptions(prev => ({ ...prev, ...preset.values }))
                       saveToHistory()
                     }}
-                    className="text-xs"
+                    className="text-xs h-8"
                   >
                     {preset.name}
                   </Button>
@@ -561,62 +718,127 @@ export function SimpleImageToolLayout({
             </div>
           )}
 
-          {/* Essential Options Only */}
-          {options.map((option) => (
-            <div key={option.key} className="space-y-2">
-              <Label className="text-sm font-medium">{option.label}</Label>
-              
-              {option.type === "select" && (
-                <Select
-                  value={toolOptions[option.key]?.toString()}
-                  onValueChange={(value) => {
-                    setToolOptions(prev => ({ ...prev, [option.key]: value }))
-                    saveToHistory()
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {option.options?.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {option.type === "slider" && (
-                <div className="space-y-2">
-                  <Slider
-                    value={[toolOptions[option.key] || option.defaultValue]}
-                    onValueChange={([value]) => setToolOptions(prev => ({ ...prev, [option.key]: value }))}
-                    onValueCommit={() => saveToHistory()}
-                    min={option.min}
-                    max={option.max}
-                    step={option.step}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{option.min}</span>
-                    <span className="font-medium">{toolOptions[option.key] || option.defaultValue}</span>
-                    <span>{option.max}</span>
-                  </div>
+          {/* Grouped Options */}
+          {Object.entries(groupedOptions).map(([section, sectionOptions]) => (
+            <div key={section} className="space-y-4">
+              {section !== "General" && (
+                <div className="flex items-center space-x-2">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <Label className="text-xs font-medium text-gray-500 uppercase tracking-wide">{section}</Label>
+                  <div className="h-px bg-gray-200 flex-1"></div>
                 </div>
               )}
+              
+              {sectionOptions.map((option) => {
+                // Check condition if exists
+                if (option.condition && !option.condition(toolOptions)) {
+                  return null
+                }
 
-              {option.type === "input" && (
-                <Input
-                  type="number"
-                  value={toolOptions[option.key] || option.defaultValue}
-                  onChange={(e) => {
-                    setToolOptions(prev => ({ ...prev, [option.key]: parseInt(e.target.value) || option.defaultValue }))
-                  }}
-                  onBlur={saveToHistory}
-                  min={option.min}
-                  max={option.max}
-                />
-              )}
+                return (
+                  <div key={option.key} className="space-y-2">
+                    <Label className="text-sm font-medium">{option.label}</Label>
+                    
+                    {option.type === "select" && (
+                      <Select
+                        value={toolOptions[option.key]?.toString()}
+                        onValueChange={(value) => {
+                          setToolOptions(prev => ({ ...prev, [option.key]: value }))
+                          saveToHistory()
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {option.selectOptions?.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+
+                    {option.type === "slider" && (
+                      <div className="space-y-2">
+                        <Slider
+                          value={[toolOptions[option.key] || option.defaultValue]}
+                          onValueChange={([value]) => setToolOptions(prev => ({ ...prev, [option.key]: value }))}
+                          onValueCommit={() => saveToHistory()}
+                          min={option.min}
+                          max={option.max}
+                          step={option.step}
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>{option.min}</span>
+                          <span className="font-medium">{toolOptions[option.key] || option.defaultValue}</span>
+                          <span>{option.max}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {option.type === "input" && (
+                      <Input
+                        type="number"
+                        value={toolOptions[option.key] || option.defaultValue}
+                        onChange={(e) => {
+                          setToolOptions(prev => ({ ...prev, [option.key]: parseInt(e.target.value) || option.defaultValue }))
+                        }}
+                        onBlur={saveToHistory}
+                        min={option.min}
+                        max={option.max}
+                      />
+                    )}
+
+                    {option.type === "checkbox" && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={toolOptions[option.key] || false}
+                          onCheckedChange={(checked) => {
+                            setToolOptions(prev => ({ ...prev, [option.key]: checked }))
+                            saveToHistory()
+                          }}
+                        />
+                        <span className="text-sm">{option.label}</span>
+                      </div>
+                    )}
+
+                    {option.type === "color" && (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="color"
+                          value={toolOptions[option.key] || option.defaultValue}
+                          onChange={(e) => {
+                            setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
+                            saveToHistory()
+                          }}
+                          className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                        />
+                        <Input
+                          value={toolOptions[option.key] || option.defaultValue}
+                          onChange={(e) => {
+                            setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
+                          }}
+                          onBlur={saveToHistory}
+                          className="flex-1"
+                        />
+                      </div>
+                    )}
+
+                    {option.type === "text" && (
+                      <Input
+                        value={toolOptions[option.key] || option.defaultValue}
+                        onChange={(e) => {
+                          setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
+                        }}
+                        onBlur={saveToHistory}
+                        placeholder={option.label}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           ))}
 
@@ -626,7 +848,7 @@ export function SimpleImageToolLayout({
           </div>
         </div>
 
-        {/* Sidebar Footer */}
+        {/* Enhanced Sidebar Footer */}
         <div className="p-6 border-t bg-gray-50 space-y-3">
           <Button 
             onClick={handleProcess}
@@ -641,7 +863,7 @@ export function SimpleImageToolLayout({
               </>
             ) : (
               <>
-                {title} →
+                {title.split(' ')[0]} {files.length > 1 ? `${files.length} Images` : 'Image'} →
               </>
             )}
           </Button>
@@ -689,7 +911,7 @@ export function SimpleImageToolLayout({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={supportedFormats.join(",")}
         multiple={!singleFileOnly && maxFiles > 1}
         onChange={(e) => handleFileUpload(e.target.files)}
         className="hidden"

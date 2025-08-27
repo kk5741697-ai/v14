@@ -1,6 +1,6 @@
 "use client"
 
-import { SimpleImageToolLayout } from "@/components/simple-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { Maximize } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -12,6 +12,7 @@ const resizeOptions = [
     defaultValue: 800,
     min: 1,
     max: 10000,
+    section: "Dimensions",
   },
   {
     key: "height",
@@ -20,6 +21,38 @@ const resizeOptions = [
     defaultValue: 600,
     min: 1,
     max: 10000,
+    section: "Dimensions",
+  },
+  {
+    key: "maintainAspectRatio",
+    label: "Lock Aspect Ratio",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Dimensions",
+  },
+  {
+    key: "resizeMode",
+    label: "Resize Mode",
+    type: "select" as const,
+    defaultValue: "pixels",
+    selectOptions: [
+      { value: "pixels", label: "Exact Pixels" },
+      { value: "percentage", label: "Percentage" },
+      { value: "fit", label: "Fit to Size" },
+    ],
+    section: "Dimensions",
+  },
+  {
+    key: "outputFormat",
+    label: "Output Format",
+    type: "select" as const,
+    defaultValue: "jpeg",
+    selectOptions: [
+      { value: "jpeg", label: "JPEG" },
+      { value: "png", label: "PNG" },
+      { value: "webp", label: "WebP" },
+    ],
+    section: "Output",
   },
   {
     key: "quality",
@@ -29,6 +62,7 @@ const resizeOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Output",
   },
 ]
 
@@ -38,25 +72,35 @@ const resizePresets = [
   { name: "Facebook Cover", values: { width: 1200, height: 630 } },
   { name: "Twitter Header", values: { width: 1500, height: 500 } },
   { name: "LinkedIn Post", values: { width: 1200, height: 627 } },
-  { name: "50% Scale", values: { width: 0, height: 0 } }, // Will be calculated
+  { name: "50% Scale", values: { resizeMode: "percentage", width: 50, height: 50 } },
 ]
 
 async function resizeImages(files: any[], options: any) {
   try {
     const processedFiles = await Promise.all(
       files.map(async (file) => {
+        let targetWidth = options.width
+        let targetHeight = options.height
+        
+        // Handle percentage mode
+        if (options.resizeMode === "percentage") {
+          targetWidth = Math.round((file.dimensions.width * options.width) / 100)
+          targetHeight = Math.round((file.dimensions.height * options.height) / 100)
+        }
+        
         const processedBlob = await ImageProcessor.resizeImage(file.originalFile || file.file, {
-          width: options.width,
-          height: options.height,
-          maintainAspectRatio: true,
-          outputFormat: "jpeg",
+          width: targetWidth,
+          height: targetHeight,
+          maintainAspectRatio: options.maintainAspectRatio,
+          outputFormat: options.outputFormat || "jpeg",
           quality: options.quality
         })
 
         const processedUrl = URL.createObjectURL(processedBlob)
         
+        const outputFormat = options.outputFormat || "jpeg"
         const baseName = file.name.split(".")[0]
-        const newName = `${baseName}_resized.jpg`
+        const newName = `${baseName}_resized.${outputFormat}`
 
         return {
           ...file,
@@ -64,7 +108,8 @@ async function resizeImages(files: any[], options: any) {
           processedPreview: processedUrl,
           name: newName,
           processedSize: processedBlob.size,
-          blob: processedBlob
+          blob: processedBlob,
+          dimensions: { width: targetWidth, height: targetHeight }
         }
       })
     )
@@ -83,15 +128,18 @@ async function resizeImages(files: any[], options: any) {
 
 export default function ImageResizerPage() {
   return (
-    <SimpleImageToolLayout
-      title="Resize IMAGE"
-      description="Define your dimensions, by percent or pixel, and resize your JPG, PNG, SVG, and GIF images."
+    <ImageToolsLayout
+      title="Resize Image"
+      description="Define your dimensions by percent or pixel, and resize your images with presets."
       icon={Maximize}
       toolType="resize"
       processFunction={resizeImages}
       options={resizeOptions}
       maxFiles={20}
       presets={resizePresets}
+      allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp", "image/gif"]}
+      outputFormats={["jpeg", "png", "webp"]}
     />
   )
 }

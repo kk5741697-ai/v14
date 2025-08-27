@@ -1,6 +1,6 @@
 "use client"
 
-import { SimpleImageToolLayout } from "@/components/simple-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { Archive } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -10,12 +10,13 @@ const compressOptions = [
     label: "Compression Level",
     type: "select" as const,
     defaultValue: "medium",
-    options: [
+    selectOptions: [
       { value: "low", label: "Low (High Quality)" },
       { value: "medium", label: "Medium (Balanced)" },
       { value: "high", label: "High (Small Size)" },
       { value: "maximum", label: "Maximum (Smallest)" },
     ],
+    section: "Compression",
   },
   {
     key: "quality",
@@ -25,6 +26,19 @@ const compressOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Compression",
+  },
+  {
+    key: "outputFormat",
+    label: "Output Format",
+    type: "select" as const,
+    defaultValue: "jpeg",
+    selectOptions: [
+      { value: "jpeg", label: "JPEG" },
+      { value: "png", label: "PNG" },
+      { value: "webp", label: "WebP" },
+    ],
+    section: "Output",
   },
 ]
 
@@ -35,13 +49,14 @@ async function compressImages(files: any[], options: any) {
         const processedBlob = await ImageProcessor.compressImage(file.originalFile || file.file, {
           quality: options.quality,
           compressionLevel: options.compressionLevel,
-          outputFormat: "jpeg"
+          outputFormat: options.outputFormat || "jpeg"
         })
 
         const processedUrl = URL.createObjectURL(processedBlob)
         
+        const outputFormat = options.outputFormat || "jpeg"
         const baseName = file.name.split(".")[0]
-        const newName = `${baseName}_compressed.jpg`
+        const newName = `${baseName}_compressed.${outputFormat}`
 
         return {
           ...file,
@@ -68,14 +83,17 @@ async function compressImages(files: any[], options: any) {
 
 export default function ImageCompressorPage() {
   return (
-    <SimpleImageToolLayout
-      title="Compress IMAGE"
-      description="Compress JPG, PNG, SVG, and GIFs while saving space and maintaining quality."
+    <ImageToolsLayout
+      title="Compress Image"
+      description="Compress JPG, PNG, WebP, and GIFs while saving space and maintaining quality."
       icon={Archive}
       toolType="compress"
       processFunction={compressImages}
       options={compressOptions}
       maxFiles={20}
+      allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp", "image/gif"]}
+      outputFormats={["jpeg", "png", "webp"]}
     />
   )
 }

@@ -1,8 +1,8 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { FileImage } from "lucide-react"
-import { PDFProcessor } from "@/lib/pdf-processor"
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 const convertOptions = [
   {
@@ -15,8 +15,8 @@ const convertOptions = [
       { value: "letter", label: "Letter" },
       { value: "legal", label: "Legal" },
       { value: "a3", label: "A3" },
-      { value: "custom", label: "Custom" },
     ],
+    section: "Page Settings",
   },
   {
     key: "orientation",
@@ -27,6 +27,7 @@ const convertOptions = [
       { value: "portrait", label: "Portrait" },
       { value: "landscape", label: "Landscape" },
     ],
+    section: "Page Settings",
   },
   {
     key: "margin",
@@ -36,18 +37,21 @@ const convertOptions = [
     min: 0,
     max: 100,
     step: 5,
+    section: "Layout",
   },
   {
     key: "fitToPage",
     label: "Fit Images to Page",
     type: "checkbox" as const,
     defaultValue: true,
+    section: "Layout",
   },
   {
     key: "maintainAspectRatio",
     label: "Maintain Aspect Ratio",
     type: "checkbox" as const,
     defaultValue: true,
+    section: "Layout",
   },
 ]
 
@@ -61,7 +65,7 @@ async function convertImagesToPDF(files: any[], options: any) {
     }
 
     // Extract actual File objects
-    const imageFiles = files.map((f) => f.file)
+    const imageFiles = files.map((f) => f.originalFile || f.file)
 
     // Process image to PDF conversion using real PDF-lib
     const pdfBytes = await PDFProcessor.imagesToPDF(imageFiles)
@@ -84,7 +88,7 @@ async function convertImagesToPDF(files: any[], options: any) {
 
 export default function ImageToPDFPage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="Image to PDF Converter"
       description="Convert multiple images into a single PDF document with custom page layouts, margins, and sizing options."
       icon={FileImage}
@@ -92,7 +96,6 @@ export default function ImageToPDFPage() {
       processFunction={convertImagesToPDF}
       options={convertOptions}
       maxFiles={20}
-      allowPageSelection={false}
       allowPageReorder={true}
     />
   )

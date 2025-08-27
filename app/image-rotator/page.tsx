@@ -1,7 +1,8 @@
 "use client"
 
-import { ImageToolLayout } from "@/components/image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { RotateCw } from "lucide-react"
+import { ImageProcessor } from "@/lib/processors/image-processor"
 
 const rotateOptions = [
   {
@@ -15,6 +16,7 @@ const rotateOptions = [
       { value: "270", label: "270° Clockwise (90° Counter)" },
       { value: "-90", label: "90° Counter-clockwise" },
     ],
+    section: "Rotation",
   },
   {
     key: "customAngle",
@@ -24,12 +26,14 @@ const rotateOptions = [
     min: -180,
     max: 180,
     step: 1,
+    section: "Rotation",
   },
   {
     key: "backgroundColor",
     label: "Background Color",
     type: "color" as const,
     defaultValue: "#ffffff",
+    section: "Style",
   },
   {
     key: "outputFormat",
@@ -41,6 +45,7 @@ const rotateOptions = [
       { value: "png", label: "PNG" },
       { value: "webp", label: "WebP" },
     ],
+    section: "Output",
   },
   {
     key: "quality",
@@ -50,49 +55,68 @@ const rotateOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Output",
   },
 ]
 
 async function rotateImages(files: any[], options: any) {
-  // Simulate image rotation process
-  return new Promise<{ success: boolean; processedFiles?: any[]; error?: string }>((resolve) => {
-    setTimeout(() => {
-      if (files.length === 0) {
-        resolve({
-          success: false,
-          error: "No files to process",
-        })
-        return
+  try {
+    if (files.length === 0) {
+      return {
+        success: false,
+        error: "No files to process",
       }
+    }
 
-      // Simulate successful rotation
-      const angle = options.customAngle !== 0 ? options.customAngle : Number.parseInt(options.rotation)
-      const processedFiles = files.map((file) => {
-        // For 90° and 270° rotations, swap width and height
+    const processedFiles = await Promise.all(
+      files.map(async (file) => {
+        const angle = options.customAngle !== 0 ? options.customAngle : parseInt(options.rotation)
+        
+        const processedBlob = await ImageProcessor.rotateImage(file.originalFile || file.file, {
+          rotation: angle,
+          backgroundColor: options.backgroundColor,
+          outputFormat: options.outputFormat,
+          quality: options.quality,
+        })
+
+        const processedUrl = URL.createObjectURL(processedBlob)
+        
+        const outputFormat = options.outputFormat || "png"
+        const baseName = file.name.split(".")[0]
+        const newName = `${baseName}_rotated.${outputFormat}`
+        
+        // Calculate new dimensions for 90° and 270° rotations
         const shouldSwapDimensions = Math.abs(angle) === 90 || Math.abs(angle) === 270
         const newDimensions = shouldSwapDimensions
           ? { width: file.dimensions.height, height: file.dimensions.width }
           : file.dimensions
-
         return {
           ...file,
           processed: true,
-          processedPreview: file.preview,
+          processedPreview: processedUrl,
+          name: newName,
+          processedSize: processedBlob.size,
+          blob: processedBlob,
           dimensions: newDimensions,
         }
       })
+    )
 
-      resolve({
-        success: true,
-        processedFiles,
-      })
-    }, 1500)
-  })
+    return {
+      success: true,
+      processedFiles,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to rotate images",
+    }
+  }
 }
 
 export default function ImageRotatorPage() {
   return (
-    <ImageToolLayout
+    <ImageToolsLayout
       title="Image Rotator"
       description="Rotate images by 90°, 180°, 270°, or any custom angle. Perfect for fixing orientation and creating artistic effects."
       icon={RotateCw}
@@ -101,6 +125,8 @@ export default function ImageRotatorPage() {
       options={rotateOptions}
       maxFiles={10}
       allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp"]}
+      outputFormats={["jpeg", "png", "webp"]}
     />
   )
 }

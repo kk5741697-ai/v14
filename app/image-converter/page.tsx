@@ -1,6 +1,6 @@
 "use client"
 
-import { SimpleImageToolLayout } from "@/components/simple-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { RefreshCw } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -14,10 +14,8 @@ const convertOptions = [
       { value: "jpeg", label: "JPEG" },
       { value: "png", label: "PNG" },
       { value: "webp", label: "WebP" },
-      { value: "gif", label: "GIF" },
-      { value: "bmp", label: "BMP" },
-      { value: "tiff", label: "TIFF" },
     ],
+    section: "Output",
   },
   {
     key: "quality",
@@ -27,24 +25,48 @@ const convertOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Output",
   },
   {
     key: "backgroundColor",
     label: "Background Color (for transparent images)",
     type: "color" as const,
     defaultValue: "#ffffff",
+    section: "Options",
   },
   {
     key: "preserveTransparency",
     label: "Preserve Transparency",
     type: "checkbox" as const,
     defaultValue: true,
+    section: "Options",
   },
   {
-    key: "removeMetadata",
-    label: "Remove Metadata",
+    key: "rotation",
+    label: "Rotation (degrees)",
+    type: "select" as const,
+    defaultValue: "0",
+    selectOptions: [
+      { value: "0", label: "No Rotation" },
+      { value: "90", label: "90° Clockwise" },
+      { value: "180", label: "180° (Flip)" },
+      { value: "270", label: "270° Clockwise" },
+    ],
+    section: "Transform",
+  },
+  {
+    key: "flipHorizontal",
+    label: "Flip Horizontal",
     type: "checkbox" as const,
     defaultValue: false,
+    section: "Transform",
+  },
+  {
+    key: "flipVertical",
+    label: "Flip Vertical",
+    type: "checkbox" as const,
+    defaultValue: false,
+    section: "Transform",
   },
 ]
 
@@ -65,7 +87,8 @@ async function convertImages(files: any[], options: any) {
           {
             quality: options.quality,
             backgroundColor: options.backgroundColor,
-            outputFormat: options.outputFormat as "jpeg" | "png" | "webp"
+            outputFormat: options.outputFormat as "jpeg" | "png" | "webp",
+            rotation: parseInt(options.rotation) || 0,
           }
         )
 
@@ -101,16 +124,17 @@ async function convertImages(files: any[], options: any) {
 
 export default function ImageConverterPage() {
   return (
-    <ImageToolLayout
+    <ImageToolsLayout
       title="Image Converter"
-      description="Convert images between different formats including JPEG, PNG, WebP, GIF, BMP, and TIFF. Preserve quality and transparency as needed."
+      description="Convert images between different formats including JPEG, PNG, and WebP. Apply rotation and flipping during conversion."
       icon={RefreshCw}
       toolType="convert"
       processFunction={convertImages}
       options={convertOptions}
       maxFiles={15}
       allowBatchProcessing={true}
-      supportedFormats={["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/tiff"]}
+      supportedFormats={["image/jpeg", "image/png", "image/gif", "image/webp"]}
+      outputFormats={["jpeg", "png", "webp"]}
     />
   )
 }

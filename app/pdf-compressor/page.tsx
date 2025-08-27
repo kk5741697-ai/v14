@@ -1,6 +1,6 @@
 "use client"
 
-import { SimplePDFToolLayout } from "@/components/simple-pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Archive } from "lucide-react"
 import { PDFProcessor } from "@/lib/pdf-processor"
 import JSZip from "jszip"
@@ -11,12 +11,27 @@ const compressOptions = [
     label: "Compression Level",
     type: "select" as const,
     defaultValue: "medium",
-    options: [
+    selectOptions: [
       { value: "low", label: "Low Compression (High Quality)" },
       { value: "medium", label: "Medium Compression (Balanced)" },
       { value: "high", label: "High Compression (Small Size)" },
       { value: "extreme", label: "Extreme Compression (Smallest)" },
     ],
+    section: "Compression",
+  },
+  {
+    key: "optimizeImages",
+    label: "Optimize Images",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Options",
+  },
+  {
+    key: "removeMetadata",
+    label: "Remove Metadata",
+    type: "checkbox" as const,
+    defaultValue: false,
+    section: "Options",
   },
 ]
 
@@ -32,14 +47,13 @@ async function compressPDF(files: any[], options: any) {
     const compressionOptions = {
       quality: 80,
       compressionLevel: options.compressionLevel,
-      optimizeImages: true,
-      removeMetadata: false,
-      compressFonts: true,
+      optimizeImages: options.optimizeImages,
+      removeMetadata: options.removeMetadata,
     }
 
     if (files.length === 1) {
       // Single file compression
-      const compressedBytes = await PDFProcessor.compressPDF(files[0].file, compressionOptions)
+      const compressedBytes = await PDFProcessor.compressPDF(files[0].originalFile || files[0].file, compressionOptions)
       const blob = new Blob([compressedBytes], { type: "application/pdf" })
       const downloadUrl = URL.createObjectURL(blob)
 
@@ -52,7 +66,7 @@ async function compressPDF(files: any[], options: any) {
       const zip = new JSZip()
 
       for (const file of files) {
-        const compressedBytes = await PDFProcessor.compressPDF(file.file, compressionOptions)
+        const compressedBytes = await PDFProcessor.compressPDF(file.originalFile || file.file, compressionOptions)
         const filename = `compressed_${file.name}`
         zip.file(filename, compressedBytes)
       }
@@ -75,7 +89,7 @@ async function compressPDF(files: any[], options: any) {
 
 export default function PDFCompressorPage() {
   return (
-    <SimplePDFToolLayout
+    <PDFToolsLayout
       title="PDF Compressor"
       description="Reduce PDF file size while maintaining quality. Optimize images, compress fonts, and remove unnecessary metadata to create smaller files."
       icon={Archive}

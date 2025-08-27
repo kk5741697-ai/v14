@@ -1,6 +1,6 @@
 "use client"
 
-import { EnhancedImageToolLayout } from "@/components/enhanced-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { FlipHorizontal } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -15,7 +15,7 @@ const flipOptions = [
       { value: "vertical", label: "Vertical (Top ↔ Bottom)" },
       { value: "both", label: "Both Directions" },
     ],
-    section: "Flip Settings",
+    section: "Transform",
   },
   {
     key: "outputFormat",
@@ -45,12 +45,12 @@ async function flipImages(files: any[], options: any) {
   try {
     const processedFiles = await Promise.all(
       files.map(async (file) => {
-        const processedBlob = await ImageProcessor.processImage(
+        const processedBlob = await ImageProcessor.convertFormat(
           file.originalFile || file.file,
+          options.outputFormat,
           {
-            flipDirection: options.flipDirection,
+            quality: options.quality,
             outputFormat: options.outputFormat,
-            quality: options.quality
           }
         )
 
@@ -85,15 +85,17 @@ async function flipImages(files: any[], options: any) {
 
 export default function ImageFlipperPage() {
   return (
-    <EnhancedImageToolLayout
-      title="Flip IMAGE"
+    <ImageToolsLayout
+      title="Flip Image"
       description="Flip images horizontally, vertically, or both directions with batch processing support."
       icon={FlipHorizontal}
-      toolType="rotate"
+      toolType="convert"
       processFunction={flipImages}
       options={flipOptions}
       maxFiles={20}
       allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp", "image/gif"]}
+      outputFormats={["png", "jpeg", "webp"]}
     />
   )
 }

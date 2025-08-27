@@ -1,12 +1,32 @@
 "use client"
 
-import { SimplePDFToolLayout } from "@/components/simple-pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Scissors } from "lucide-react"
 import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 import JSZip from "jszip"
 
-const splitOptions: any[] = []
+const splitOptions = [
+  {
+    key: "splitMode",
+    label: "Split Mode",
+    type: "select" as const,
+    defaultValue: "pages",
+    selectOptions: [
+      { value: "pages", label: "Extract Selected Pages" },
+      { value: "range", label: "Page Ranges" },
+      { value: "size", label: "Equal Parts" },
+    ],
+    section: "Split Settings",
+  },
+  {
+    key: "preserveMetadata",
+    label: "Preserve Metadata",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Options",
+  },
+]
 async function splitPDF(files: any[], options: any) {
   try {
     if (files.length !== 1) {
@@ -21,19 +41,22 @@ async function splitPDF(files: any[], options: any) {
     // Handle different split modes
     let ranges: Array<{ from: number; to: number }> = []
     
-    if (options.splitMode === "pages") {
+    if (options.extractMode === "pages") {
       // Split into individual pages based on selected pages
       const selectedPages = file.pages.filter((p: any) => p.selected).map((p: any) => p.pageNumber)
       ranges = selectedPages.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
-    } else if (options.splitMode === "range") {
+    } else if (options.extractMode === "range") {
       ranges = options.pageRanges || [{ from: 1, to: file.pageCount }]
-    } else if (options.splitMode === "size") {
+    } else if (options.extractMode === "size") {
       const parts = options.equalParts || 2
       const pagesPerPart = Math.ceil(file.pageCount / parts)
       ranges = Array.from({ length: parts }, (_, i) => ({
         from: i * pagesPerPart + 1,
         to: Math.min((i + 1) * pagesPerPart, file.pageCount)
       }))
+    } else {
+      // Extract all pages as individual files
+      ranges = Array.from({ length: file.pageCount }, (_, i) => ({ from: i + 1, to: i + 1 }))
     }
 
     if (ranges.length === 0) {
@@ -72,7 +95,7 @@ async function splitPDF(files: any[], options: any) {
 
 export default function PDFSplitterPage() {
   return (
-    <SimplePDFToolLayout
+    <PDFToolsLayout
       title="Split PDF"
       description="Split large PDF files into smaller documents by page ranges, file size, bookmarks, or equal parts. Extract specific pages or sections easily."
       icon={Scissors}

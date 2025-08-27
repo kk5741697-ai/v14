@@ -1,6 +1,6 @@
 "use client"
 
-import { EnhancedImageToolLayout } from "@/components/enhanced-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { Zap } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -86,7 +86,7 @@ async function upscaleImages(files: any[], options: any) {
         const newWidth = Math.round(file.dimensions.width * scaleFactor)
         const newHeight = Math.round(file.dimensions.height * scaleFactor)
 
-        const processedBlob = await ImageProcessor.processImage(
+        const processedBlob = await ImageProcessor.resizeImage(
           file.originalFile || file.file,
           {
             width: newWidth,
@@ -94,10 +94,6 @@ async function upscaleImages(files: any[], options: any) {
             maintainAspectRatio: true,
             outputFormat: options.outputFormat,
             quality: options.quality,
-            filters: {
-              brightness: options.enhanceDetails ? 105 : 100,
-              contrast: options.enhanceDetails ? 105 : 100,
-            }
           }
         )
 
@@ -133,8 +129,8 @@ async function upscaleImages(files: any[], options: any) {
 
 export default function ImageUpscalerPage() {
   return (
-    <EnhancedImageToolLayout
-      title="Upscale IMAGE"
+    <ImageToolsLayout
+      title="Upscale Image"
       description="Enlarge images with AI-enhanced quality. Increase resolution while preserving details and reducing artifacts."
       icon={Zap}
       toolType="resize"
@@ -142,6 +138,8 @@ export default function ImageUpscalerPage() {
       options={upscaleOptions}
       maxFiles={10}
       allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp"]}
+      outputFormats={["png", "jpeg", "webp"]}
     />
   )
 }

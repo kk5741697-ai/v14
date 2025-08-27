@@ -1,6 +1,6 @@
 "use client"
 
-import { EnhancedImageToolLayout } from "@/components/enhanced-image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { Palette } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -13,7 +13,7 @@ const filterOptions = [
     min: 0,
     max: 200,
     step: 5,
-    section: "Basic Adjustments",
+    section: "Adjustments",
   },
   {
     key: "contrast",
@@ -23,7 +23,7 @@ const filterOptions = [
     min: 0,
     max: 200,
     step: 5,
-    section: "Basic Adjustments",
+    section: "Adjustments",
   },
   {
     key: "saturation",
@@ -33,17 +33,7 @@ const filterOptions = [
     min: 0,
     max: 200,
     step: 5,
-    section: "Basic Adjustments",
-  },
-  {
-    key: "hue",
-    label: "Hue Shift",
-    type: "slider" as const,
-    defaultValue: 0,
-    min: -180,
-    max: 180,
-    step: 5,
-    section: "Color Adjustments",
+    section: "Adjustments",
   },
   {
     key: "blur",
@@ -65,13 +55,6 @@ const filterOptions = [
   {
     key: "grayscale",
     label: "Grayscale",
-    type: "checkbox" as const,
-    defaultValue: false,
-    section: "Effects",
-  },
-  {
-    key: "invert",
-    label: "Invert Colors",
     type: "checkbox" as const,
     defaultValue: false,
     section: "Effects",
@@ -114,7 +97,6 @@ async function applyFilters(files: any[], options: any) {
               blur: options.blur,
               sepia: options.sepia,
               grayscale: options.grayscale,
-              invert: options.invert
             },
             outputFormat: options.outputFormat,
             quality: options.quality
@@ -152,15 +134,17 @@ async function applyFilters(files: any[], options: any) {
 
 export default function ImageFiltersPage() {
   return (
-    <EnhancedImageToolLayout
+    <ImageToolsLayout
       title="Image Filters"
       description="Apply professional filters and adjustments to your images. Adjust brightness, contrast, saturation, and add artistic effects."
       icon={Palette}
-      toolType="convert"
+      toolType="filters"
       processFunction={applyFilters}
       options={filterOptions}
       maxFiles={15}
       allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp"]}
+      outputFormats={["png", "jpeg", "webp"]}
     />
   )
 }

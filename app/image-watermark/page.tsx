@@ -1,6 +1,6 @@
 "use client"
 
-import { ImageToolLayout } from "@/components/image-tool-layout"
+import { ImageToolsLayout } from "@/components/image-tools-layout"
 import { Droplets } from "lucide-react"
 import { ImageProcessor } from "@/lib/processors/image-processor"
 
@@ -10,6 +10,7 @@ const watermarkOptions = [
     label: "Watermark Text",
     type: "text" as const,
     defaultValue: "© Your Brand",
+    section: "Watermark",
   },
   {
     key: "opacity",
@@ -19,6 +20,7 @@ const watermarkOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Watermark",
   },
   {
     key: "fontSize",
@@ -28,6 +30,7 @@ const watermarkOptions = [
     min: 1,
     max: 15,
     step: 1,
+    section: "Watermark",
   },
   {
     key: "position",
@@ -40,13 +43,23 @@ const watermarkOptions = [
       { value: "top-right", label: "Top Right" },
       { value: "bottom-left", label: "Bottom Left" },
       { value: "bottom-right", label: "Bottom Right" },
+      { value: "diagonal", label: "Diagonal" },
     ],
+    section: "Position",
   },
   {
     key: "textColor",
     label: "Text Color",
     type: "color" as const,
     defaultValue: "#ffffff",
+    section: "Style",
+  },
+  {
+    key: "shadowEnabled",
+    label: "Add Text Shadow",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Style",
   },
   {
     key: "outputFormat",
@@ -58,6 +71,7 @@ const watermarkOptions = [
       { value: "png", label: "PNG" },
       { value: "webp", label: "WebP" },
     ],
+    section: "Output",
   },
   {
     key: "quality",
@@ -67,6 +81,7 @@ const watermarkOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Output",
   },
 ]
 
@@ -81,11 +96,13 @@ async function addWatermarkToImages(files: any[], options: any) {
 
     const processedFiles = await Promise.all(
       files.map(async (file) => {
-        const processedBlob = await ImageProcessor.addWatermark(file.file, {
-          watermarkText: options.watermarkText,
+        const processedBlob = await ImageProcessor.addWatermark(file.originalFile || file.file, options.watermarkText, {
           watermarkOpacity: options.opacity / 100,
           outputFormat: options.outputFormat,
           quality: options.quality,
+          position: options.position,
+          textColor: options.textColor,
+          shadowEnabled: options.shadowEnabled,
         })
 
         const processedUrl = URL.createObjectURL(processedBlob)
@@ -93,7 +110,7 @@ async function addWatermarkToImages(files: any[], options: any) {
         // Update file name with correct extension
         const outputFormat = options.outputFormat || "png"
         const baseName = file.name.split(".")[0]
-        const newName = `${baseName}.${outputFormat}`
+        const newName = `${baseName}_watermarked.${outputFormat}`
 
         return {
           ...file,
@@ -120,7 +137,7 @@ async function addWatermarkToImages(files: any[], options: any) {
 
 export default function ImageWatermarkPage() {
   return (
-    <ImageToolLayout
+    <ImageToolsLayout
       title="Image Watermark"
       description="Add text watermarks to your images for copyright protection and branding. Customize opacity, position, size, and color."
       icon={Droplets}
@@ -129,6 +146,8 @@ export default function ImageWatermarkPage() {
       options={watermarkOptions}
       maxFiles={10}
       allowBatchProcessing={true}
+      supportedFormats={["image/jpeg", "image/png", "image/webp"]}
+      outputFormats={["jpeg", "png", "webp"]}
     />
   )
 }

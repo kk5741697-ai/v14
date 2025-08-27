@@ -1,15 +1,78 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Heart, Menu, X, MoreHorizontal, ChevronDown, Wrench } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Heart, Menu, X, MoreHorizontal, ChevronDown, Wrench, Search } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { TOOLS_REGISTRY } from "@/lib/tools-registry"
+import { useRouter } from "next/navigation"
+
+// All available tools for search
+const allTools = [
+  // Image Tools
+  { name: "Compress Image", href: "/image-compressor", category: "Image" },
+  { name: "Resize Image", href: "/image-resizer", category: "Image" },
+  { name: "Crop Image", href: "/image-cropper", category: "Image" },
+  { name: "Convert Image", href: "/image-converter", category: "Image" },
+  { name: "Image Rotator", href: "/image-rotator", category: "Image" },
+  { name: "Background Remover", href: "/background-remover", category: "Image" },
+  { name: "Image Flipper", href: "/image-flipper", category: "Image" },
+  { name: "Image Filters", href: "/image-filters", category: "Image" },
+  { name: "Image Upscaler", href: "/image-upscaler", category: "Image" },
+  { name: "Image Watermark", href: "/image-watermark", category: "Image" },
+  
+  // PDF Tools
+  { name: "Merge PDF", href: "/pdf-merger", category: "PDF" },
+  { name: "Split PDF", href: "/pdf-splitter", category: "PDF" },
+  { name: "Compress PDF", href: "/pdf-compressor", category: "PDF" },
+  { name: "PDF to Image", href: "/pdf-to-image", category: "PDF" },
+  { name: "PDF to Word", href: "/pdf-to-word", category: "PDF" },
+  { name: "PDF Password Protector", href: "/pdf-password-protector", category: "PDF" },
+  { name: "Image to PDF", href: "/image-to-pdf", category: "PDF" },
+  { name: "PDF Unlock", href: "/pdf-unlock", category: "PDF" },
+  { name: "PDF Organizer", href: "/pdf-organizer", category: "PDF" },
+  { name: "PDF Watermark", href: "/pdf-watermark", category: "PDF" },
+  
+  // QR Tools
+  { name: "QR Code Generator", href: "/qr-code-generator", category: "QR" },
+  { name: "QR Scanner", href: "/qr-scanner", category: "QR" },
+  { name: "Barcode Generator", href: "/barcode-generator", category: "QR" },
+  { name: "Bulk QR Generator", href: "/bulk-qr-generator", category: "QR" },
+  { name: "WiFi QR Generator", href: "/wifi-qr-generator", category: "QR" },
+  { name: "vCard QR Generator", href: "/vcard-qr-generator", category: "QR" },
+  
+  // Text Tools
+  { name: "JSON Formatter", href: "/json-formatter", category: "Text" },
+  { name: "Base64 Encoder", href: "/base64-encoder", category: "Text" },
+  { name: "URL Encoder", href: "/url-encoder", category: "Text" },
+  { name: "Text Case Converter", href: "/text-case-converter", category: "Text" },
+  { name: "Hash Generator", href: "/hash-generator", category: "Text" },
+  { name: "XML Formatter", href: "/xml-formatter", category: "Text" },
+  { name: "HTML Formatter", href: "/html-formatter", category: "Text" },
+  { name: "CSS Minifier", href: "/css-minifier", category: "Text" },
+  { name: "JavaScript Minifier", href: "/js-minifier", category: "Text" },
+  { name: "Text Diff Checker", href: "/text-diff-checker", category: "Text" },
+  { name: "Word Counter", href: "/word-counter", category: "Text" },
+  
+  // SEO Tools
+  { name: "SEO Meta Generator", href: "/seo-meta-generator", category: "SEO" },
+  
+  // Utilities
+  { name: "Password Generator", href: "/password-generator", category: "Utilities" },
+  { name: "Lorem Ipsum Generator", href: "/lorem-ipsum-generator", category: "Utilities" },
+  { name: "UUID Generator", href: "/uuid-generator", category: "Utilities" },
+  { name: "Random Number Generator", href: "/random-number-generator", category: "Utilities" },
+  { name: "Unit Converter", href: "/unit-converter", category: "Converters" },
+  { name: "Currency Converter", href: "/currency-converter", category: "Converters" },
+  { name: "Color Converter", href: "/color-converter", category: "Converters" },
+]
 
 // Dynamic tools based on current domain
 const getMainTools = (hostname: string) => {
@@ -116,7 +179,12 @@ const getBrandConfig = (hostname: string) => {
 }
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<typeof allTools>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
   const [hostname, setHostname] = useState("pixoratools.com")
+  const searchRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   
   // Get hostname on client side
   useEffect(() => {
@@ -125,6 +193,39 @@ export function Header() {
     }
   }, [])
   
+  // Handle search
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const filtered = allTools.filter(tool =>
+        tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tool.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setSearchResults(filtered.slice(0, 8))
+      setShowSearchResults(true)
+    } else {
+      setSearchResults([])
+      setShowSearchResults(false)
+    }
+  }, [searchQuery])
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const handleSearchSelect = (href: string) => {
+    setSearchQuery("")
+    setShowSearchResults(false)
+    router.push(href)
+  }
+
   const mainTools = getMainTools(hostname)
   const moreTools = getMoreTools(hostname)
   const brandConfig = getBrandConfig(hostname)
@@ -176,6 +277,43 @@ export function Header() {
           </nav>
 
           <div className="hidden lg:flex items-center space-x-4">
+            {/* Search */}
+            <div className="relative" ref={searchRef}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search tools..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-64 bg-gray-50 border-gray-200 focus:bg-white"
+                />
+              </div>
+              
+              {/* Search Results Dropdown */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                  {searchResults.map((tool) => (
+                    <button
+                      key={tool.href}
+                      onClick={() => handleSearchSelect(tool.href)}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                    >
+                      <div className="font-medium text-gray-900">{tool.name}</div>
+                      <div className="text-sm text-gray-500">{tool.category}</div>
+                    </button>
+                  ))}
+                  {searchQuery && (
+                    <Link href={`/search?q=${encodeURIComponent(searchQuery)}`}>
+                      <div className="px-4 py-3 text-center text-blue-600 hover:bg-blue-50 border-t border-gray-100 font-medium">
+                        View all results for "{searchQuery}"
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
             <Button variant="ghost" className="text-gray-700 hover:text-blue-600 font-medium px-4 py-2 rounded-lg hover:bg-gray-50">
               Login
             </Button>
@@ -211,6 +349,37 @@ export function Header() {
         {isMenuOpen && (
           <div className="lg:hidden border-t bg-white/95 backdrop-blur-md">
             <div className="px-4 py-6 space-y-4">
+              {/* Mobile Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search tools..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-gray-50 border-gray-200"
+                />
+              </div>
+              
+              {/* Mobile Search Results */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="bg-gray-50 rounded-lg border border-gray-200 max-h-60 overflow-y-auto">
+                  {searchResults.map((tool) => (
+                    <button
+                      key={tool.href}
+                      onClick={() => {
+                        handleSearchSelect(tool.href)
+                        setIsMenuOpen(false)
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-white border-b border-gray-200 last:border-b-0 transition-colors"
+                    >
+                      <div className="font-medium text-gray-900">{tool.name}</div>
+                      <div className="text-sm text-gray-500">{tool.category}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
               <nav className="space-y-2">
                 {mainTools.map((tool) => (
                   <Link

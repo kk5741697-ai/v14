@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DollarSign, ArrowUpDown, Copy, TrendingUp } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import React from "react"
 
 const currencies = {
   USD: { name: "US Dollar", symbol: "$", rate: 1 },

@@ -26,23 +26,7 @@ const cropOptions = [
     section: "Crop Settings",
   },
   {
-    key: "cropPreset",
-    label: "Social Media Presets",
-    type: "select" as const,
-    defaultValue: "custom",
-    selectOptions: [
-      { value: "custom", label: "Custom Size" },
-      { value: "instagram-post", label: "Instagram Post (1080x1080)" },
-      { value: "instagram-story", label: "Instagram Story (1080x1920)" },
-      { value: "facebook-post", label: "Facebook Post (1200x630)" },
-      { value: "twitter-post", label: "Twitter Post (1200x675)" },
-      { value: "youtube-thumbnail", label: "YouTube Thumbnail (1280x720)" },
-      { value: "linkedin-post", label: "LinkedIn Post (1200x627)" },
-    ],
-    section: "Crop Settings",
-  },
-  {
-    key: "cropWidth",
+    key: "width",
     label: "Width (px)",
     type: "input" as const,
     defaultValue: 800,
@@ -51,7 +35,7 @@ const cropOptions = [
     section: "Dimensions",
   },
   {
-    key: "cropHeight", 
+    key: "height", 
     label: "Height (px)",
     type: "input" as const,
     defaultValue: 600,
@@ -74,6 +58,22 @@ const cropOptions = [
     defaultValue: 0,
     min: 0,
     section: "Position",
+  },
+  {
+    key: "cropPreset",
+    label: "Quick Presets",
+    type: "select" as const,
+    defaultValue: "custom",
+    selectOptions: [
+      { value: "custom", label: "Custom Size" },
+      { value: "instagram-post", label: "Instagram Post (1080x1080)" },
+      { value: "instagram-story", label: "Instagram Story (1080x1920)" },
+      { value: "facebook-post", label: "Facebook Post (1200x630)" },
+      { value: "twitter-post", label: "Twitter Post (1200x675)" },
+      { value: "youtube-thumbnail", label: "YouTube Thumbnail (1280x720)" },
+      { value: "linkedin-post", label: "LinkedIn Post (1200x627)" },
+    ],
+    section: "Crop Settings",
   },
   {
     key: "outputFormat",
@@ -110,9 +110,34 @@ const cropPresets = [
 
 async function cropImages(files: any[], options: any) {
   try {
+    if (files.length === 0) {
+      return {
+        success: false,
+        error: "No files to process",
+      }
+    }
+
     const processedFiles = await Promise.all(
       files.map(async (file) => {
-        const cropArea = file.cropArea || { x: 10, y: 10, width: 80, height: 80 }
+        // Use crop area from file or calculate from options
+        let cropArea = file.cropArea
+        
+        if (!cropArea) {
+          // Calculate crop area from position and dimensions
+          const imgWidth = file.dimensions.width
+          const imgHeight = file.dimensions.height
+          const cropWidth = Math.min(options.width || 800, imgWidth)
+          const cropHeight = Math.min(options.height || 600, imgHeight)
+          const x = Math.min(options.positionX || 0, imgWidth - cropWidth)
+          const y = Math.min(options.positionY || 0, imgHeight - cropHeight)
+          
+          cropArea = {
+            x: (x / imgWidth) * 100,
+            y: (y / imgHeight) * 100,
+            width: (cropWidth / imgWidth) * 100,
+            height: (cropHeight / imgHeight) * 100
+          }
+        }
         
         const processedBlob = await ImageProcessor.cropImage(
           file.originalFile || file.file,

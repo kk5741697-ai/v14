@@ -1,12 +1,15 @@
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { 
   Maximize, Crop, FileImage, ArrowUpDown, Edit3, Zap, ImageIcon, Download, Palette, Upload, Archive,
-  FileType, QrCode, Code, TrendingUp, Wrench, Globe, Scissors, Lock, RefreshCw
+  FileType, QrCode, Code, TrendingUp, Wrench, Globe, Scissors, Lock, RefreshCw, Search
 } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 const featuredTools = [
   {
@@ -120,6 +123,16 @@ const toolCategories = [
 ]
 
 export default function HomePage() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -151,6 +164,48 @@ export default function HomePage() {
             Your online photo editor is here and forever free! Compress, resize, crop, convert images and more with 300+ professional tools.
             <span className="font-semibold text-gray-800">Fast, secure, and completely free.</span>
           </p>
+
+          {/* Hero Search Bar */}
+          <div className="max-w-2xl mx-auto mb-16">
+            <form onSubmit={handleSearch} className="relative">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search for tools... (e.g., compress image, merge pdf, qr generator)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-14 pr-32 h-16 text-lg bg-white/90 backdrop-blur-sm border-2 border-gray-200 rounded-2xl shadow-lg focus:border-blue-500 focus:shadow-xl transition-all"
+                />
+                <Button 
+                  type="submit"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-12 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-semibold"
+                >
+                  Search
+                </Button>
+              </div>
+            </form>
+            <div className="flex justify-center mt-4 space-x-4 text-sm">
+              <button 
+                onClick={() => setSearchQuery("compress image")}
+                className="text-gray-500 hover:text-blue-600 transition-colors"
+              >
+                compress image
+              </button>
+              <button 
+                onClick={() => setSearchQuery("merge pdf")}
+                className="text-gray-500 hover:text-blue-600 transition-colors"
+              >
+                merge pdf
+              </button>
+              <button 
+                onClick={() => setSearchQuery("qr generator")}
+                className="text-gray-500 hover:text-blue-600 transition-colors"
+              >
+                qr generator
+              </button>
+            </div>
+          </div>
 
           {/* Tool Categories */}
           <div className="flex flex-wrap justify-center gap-4 mb-16">

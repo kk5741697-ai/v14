@@ -13,6 +13,12 @@ export interface PDFProcessingOptions {
   mergeMode?: "sequential" | "interleave" | "custom"
   addBookmarks?: boolean
   preserveMetadata?: boolean
+  conversionMode?: string
+  preserveImages?: boolean
+  preserveFormatting?: boolean
+  language?: string
+  optimizeImages?: boolean
+  removeMetadata?: boolean
 }
 
 export interface PDFPageInfo {
@@ -254,7 +260,7 @@ export class PDFProcessor {
       // Note: PDF-lib doesn't support encryption directly
       // This creates a new PDF with a watermark indicating protection
       const protectedPdf = await PDFDocument.create()
-      const pages = await compressedPdf.copyPages(pdf, pdf.getPageIndices())
+      const pages = await protectedPdf.copyPages(pdf, pdf.getPageIndices())
       const helveticaFont = await protectedPdf.embedFont(StandardFonts.Helvetica)
 
       pages.forEach((page) => {
@@ -296,11 +302,27 @@ export class PDFProcessor {
 
         let x: number, y: number, rotation = 0
 
-        switch (options.watermarkOpacity) {
-          case 0.1: // diagonal
+        switch (options.position) {
+          case "diagonal":
             x = width / 2
             y = height / 2
             rotation = Math.PI / 4
+            break
+          case "top-left":
+            x = 50
+            y = height - 50
+            break
+          case "top-right":
+            x = width - 50
+            y = height - 50
+            break
+          case "bottom-left":
+            x = 50
+            y = 50
+            break
+          case "bottom-right":
+            x = width - 50
+            y = 50
             break
           default: // center
             x = width / 2 - (watermarkText.length * fontSize) / 4
@@ -315,7 +337,7 @@ export class PDFProcessor {
           font: helveticaFont,
           color: rgb(0.7, 0.7, 0.7),
           opacity: options.watermarkOpacity || 0.3,
-          rotate: { angle: rotation, origin: { x: width / 2, y: height / 2 } }
+          rotate: rotation ? { angle: rotation, origin: { x: width / 2, y: height / 2 } } : undefined
         })
       })
 
@@ -399,11 +421,11 @@ export class PDFProcessor {
       let wordContent = `Document: ${file.name}\n`
       wordContent += `Converted: ${new Date().toLocaleDateString()}\n`
       wordContent += `Pages: ${pageCount}\n\n`
-      wordContent += "=" * 50 + "\n\n"
+      wordContent += "=".repeat(50) + "\n\n"
       
       for (let i = 1; i <= pageCount; i++) {
         wordContent += `PAGE ${i}\n`
-        wordContent += "-" * 20 + "\n\n"
+        wordContent += "-".repeat(20) + "\n\n"
         
         // Simulate extracted text content
         wordContent += `This is the content from page ${i} of the PDF document. `
@@ -415,7 +437,7 @@ export class PDFProcessor {
         }
         
         if (i < pageCount) {
-          wordContent += "\n" + "=" * 50 + "\n\n"
+          wordContent += "\n" + "=".repeat(50) + "\n\n"
         }
       }
       

@@ -4,26 +4,14 @@ import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { FileText } from "lucide-react"
+import { FileText, Copy, Download, Upload, Link, RefreshCw, Settings, Trash2, Eye, Share2, Heart, AlertCircle } from "lucide-react"
 import { TextProcessor } from "@/lib/processors/text-processor"
-import { 
-  Copy, 
-  Download, 
-  Upload, 
-  Link, 
-  RefreshCw,
-  Settings,
-  Trash2,
-  Eye,
-  Share2,
-  Heart,
-  AlertCircle
-} from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 export default function JSONFormatterPage() {

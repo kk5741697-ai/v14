@@ -10,6 +10,7 @@ export interface ToolDefinition {
   supportsBulk?: boolean
   inputTypes?: string[]
   outputTypes?: string[]
+  href?: string
 }
 
 export const TOOLS_REGISTRY: ToolDefinition[] = [
@@ -21,6 +22,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Combine multiple PDF files into one document with custom ordering",
     category: "PDF",
     icon: "FileText",
+    href: "/pdf-merger",
     supportsBulk: true,
     inputTypes: ["pdf"],
     outputTypes: ["pdf"],
@@ -32,6 +34,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Split PDF files by page range or extract specific pages",
     category: "PDF",
     icon: "Scissors",
+    href: "/pdf-splitter",
     inputTypes: ["pdf"],
     outputTypes: ["pdf"],
   },
@@ -42,6 +45,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Reduce PDF file size while maintaining quality",
     category: "PDF",
     icon: "Archive",
+    href: "/pdf-compressor",
     supportsBulk: true,
     inputTypes: ["pdf"],
     outputTypes: ["pdf"],
@@ -53,6 +57,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Convert PDF pages to PNG, JPG, or WebP images",
     category: "PDF",
     icon: "ImageIcon",
+    href: "/pdf-to-image",
     inputTypes: ["pdf"],
     outputTypes: ["png", "jpg", "webp"],
   },
@@ -65,6 +70,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Resize images by pixels, percentage, or aspect ratio",
     category: "IMAGE",
     icon: "Maximize",
+    href: "/image-resizer",
     supportsBulk: true,
     inputTypes: ["jpg", "png", "webp", "gif"],
     outputTypes: ["jpg", "png", "webp"],
@@ -76,6 +82,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Reduce image file size with quality control",
     category: "IMAGE",
     icon: "Archive",
+    href: "/image-compressor",
     supportsBulk: true,
     inputTypes: ["jpg", "png", "webp"],
     outputTypes: ["jpg", "png", "webp"],
@@ -87,6 +94,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Convert between JPG, PNG, WebP, AVIF, and other formats",
     category: "IMAGE",
     icon: "RefreshCw",
+    href: "/image-converter",
     supportsBulk: true,
     inputTypes: ["jpg", "png", "webp", "gif", "bmp", "tiff"],
     outputTypes: ["jpg", "png", "webp", "avif"],
@@ -98,6 +106,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Crop images with custom dimensions or aspect ratios",
     category: "IMAGE",
     icon: "Crop",
+    href: "/image-cropper",
     supportsBulk: true,
     inputTypes: ["jpg", "png", "webp"],
     outputTypes: ["jpg", "png", "webp"],
@@ -111,6 +120,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate custom QR codes with logos, colors, and styles",
     category: "QR_BARCODE",
     icon: "QrCode",
+    href: "/qr-code-generator",
     isNew: true,
     outputTypes: ["png", "svg", "pdf"],
   },
@@ -121,6 +131,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate multiple QR codes from CSV data",
     category: "QR_BARCODE",
     icon: "Grid",
+    href: "/bulk-qr-generator",
     supportsBulk: true,
     inputTypes: ["csv"],
     outputTypes: ["zip"],
@@ -132,6 +143,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Scan and decode QR codes from images or camera",
     category: "QR_BARCODE",
     icon: "ScanLine",
+    href: "/qr-scanner",
     inputTypes: ["jpg", "png", "webp"],
   },
   {
@@ -141,6 +153,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate EAN, UPC, Code128, and other barcodes",
     category: "QR_BARCODE",
     icon: "BarChart3",
+    href: "/barcode-generator",
     outputTypes: ["png", "svg"],
   },
 
@@ -152,6 +165,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Beautify, validate, and minify JSON data",
     category: "CODE_DEV",
     icon: "Braces",
+    href: "/json-formatter",
     inputTypes: ["json"],
     outputTypes: ["json"],
   },
@@ -162,6 +176,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Format and beautify HTML code with syntax highlighting",
     category: "CODE_DEV",
     icon: "Code",
+    href: "/html-formatter",
     inputTypes: ["html"],
     outputTypes: ["html"],
   },
@@ -172,6 +187,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Format, beautify, and minify CSS stylesheets",
     category: "CODE_DEV",
     icon: "Palette",
+    href: "/css-minifier",
     inputTypes: ["css"],
     outputTypes: ["css"],
   },
@@ -182,6 +198,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Format, beautify, and minify JavaScript code",
     category: "CODE_DEV",
     icon: "FileCode",
+    href: "/js-minifier",
     inputTypes: ["js"],
     outputTypes: ["js"],
   },
@@ -192,6 +209,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Encode and decode Base64 strings and files",
     category: "CODE_DEV",
     icon: "Lock",
+    href: "/base64-encoder",
   },
   {
     id: "url-encoder",
@@ -200,6 +218,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Encode and decode URL strings and parameters",
     category: "CODE_DEV",
     icon: "Link",
+    href: "/url-encoder",
   },
 
   // SEO Tools
@@ -210,6 +229,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate SEO meta tags, Open Graph, and Twitter Cards",
     category: "SEO",
     icon: "Tags",
+    href: "/seo-meta-generator",
     outputTypes: ["html"],
   },
   {
@@ -219,6 +239,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate XML sitemaps for better search engine indexing",
     category: "SEO",
     icon: "Map",
+    href: "/sitemap-generator",
     outputTypes: ["xml"],
   },
   {
@@ -228,6 +249,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Create robots.txt files for search engine crawlers",
     category: "SEO",
     icon: "Bot",
+    href: "/robots-txt-generator",
     outputTypes: ["txt"],
   },
 
@@ -239,6 +261,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Check SSL certificate details and expiration dates",
     category: "NETWORK",
     icon: "Shield",
+    href: "/ssl-checker",
   },
   {
     id: "ip-lookup",
@@ -247,6 +270,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Get detailed information about IP addresses",
     category: "NETWORK",
     icon: "Globe",
+    href: "/ip-lookup",
   },
 
   // Utilities
@@ -257,6 +281,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate secure passwords with custom options",
     category: "UTILITIES",
     icon: "Key",
+    href: "/password-generator",
   },
   {
     id: "uuid-generator",
@@ -265,6 +290,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Generate unique identifiers (UUID/GUID)",
     category: "UTILITIES",
     icon: "Hash",
+    href: "/uuid-generator",
   },
   {
     id: "color-picker",
@@ -273,6 +299,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Pick colors and convert between HEX, RGB, HSL formats",
     category: "UTILITIES",
     icon: "Palette",
+    href: "/color-converter",
   },
   {
     id: "unit-converter",
@@ -281,6 +308,7 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     description: "Convert between different units of measurement",
     category: "CONVERTERS",
     icon: "Calculator",
+    href: "/unit-converter",
   },
 ]
 

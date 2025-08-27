@@ -3,8 +3,7 @@
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Scissors } from "lucide-react"
 import { PDFProcessor } from "@/lib/processors/pdf-processor"
-
-import JSZip from "jszip"
+import type JSZip from "jszip"
 
 const splitOptions = [
   {
@@ -142,7 +141,7 @@ async function splitPDF(files: any[], options: any) {
       }
     } else {
       // Create ZIP with split PDFs
-      const JSZip = (await import("jszip")).default
+      const { default: JSZip } = await import("jszip")
       const zip = new JSZip()
       splitResults.forEach((pdfBytes, index) => {
         const range = ranges[index]

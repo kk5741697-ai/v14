@@ -418,7 +418,7 @@ export function PDFToolsLayout({
         </div>
 
         {/* Canvas Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           {files.length === 0 ? (
             <div className="h-full flex flex-col">
               <div className="p-4">
@@ -459,7 +459,8 @@ export function PDFToolsLayout({
                 <AdBanner position="inline" showLabel />
               </div>
 
-              <div className="flex-1 p-6 overflow-auto">
+              <div className="flex-1 overflow-auto">
+                <div className="p-6">
                   <div className="space-y-8">
                     {files.map((file, fileIndex) => (
                       <div key={file.id} className="bg-white rounded-lg shadow-sm border">
@@ -576,6 +577,7 @@ export function PDFToolsLayout({
                       </div>
                     ))}
                   </div>
+                </div>
               </div>
             </div>
           )}

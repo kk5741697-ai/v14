@@ -645,30 +645,26 @@ export function ImageToolsLayout({
 
               <div 
                 ref={canvasRef}
-                className="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-gray-100 group"
+                className="flex-1 relative overflow-auto bg-gray-100 group"
                 onMouseDown={handlePanStart}
                 onMouseMove={handlePanMove}
                 onMouseUp={handlePanEnd}
                 onMouseLeave={handlePanEnd}
                 style={{ cursor: isPanning ? "grabbing" : toolType === "crop" ? "crosshair" : "grab" }}
               >
-                {currentFile && (
-                  <div className="relative">
+                <div className="min-h-full flex items-center justify-center p-6">
+                  {currentFile && (
                     <div 
-                      className="relative inline-block transition-transform duration-200"
+                      className="relative inline-block transition-transform duration-200 max-w-full max-h-full"
                       style={{ 
                         transform: `scale(${zoomLevel / 100}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-                        maxWidth: "calc(100vw - 400px)",
-                        maxHeight: "calc(100vh - 200px)"
                       }}
                     >
                       <img
                         src={currentFile.processedPreview || currentFile.preview}
                         alt={currentFile.name}
-                        className="w-full h-full object-contain border border-gray-300 rounded-lg shadow-lg bg-white"
+                        className="max-w-full max-h-full object-contain border border-gray-300 rounded-lg shadow-lg bg-white"
                         style={{ 
-                          maxWidth: "100%",
-                          maxHeight: "100%",
                           userSelect: "none",
                           pointerEvents: toolType === "crop" ? "auto" : "none"
                         }}
@@ -762,7 +758,8 @@ export function ImageToolsLayout({
                        </div>
                     </div>
                   </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* File Thumbnails Bar */}

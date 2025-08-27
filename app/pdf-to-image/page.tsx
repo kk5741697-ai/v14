@@ -14,8 +14,8 @@ const convertOptions = [
       { value: "jpg", label: "JPEG" },
       { value: "png", label: "PNG" },
       { value: "webp", label: "WebP" },
-      { value: "tiff", label: "TIFF" },
     ],
+    section: "Output",
   },
   {
     key: "resolution",
@@ -28,6 +28,7 @@ const convertOptions = [
       { value: "300", label: "300 DPI (Print)" },
       { value: "600", label: "600 DPI (High Quality)" },
     ],
+    section: "Quality",
   },
   {
     key: "imageQuality",
@@ -37,6 +38,7 @@ const convertOptions = [
     min: 10,
     max: 100,
     step: 5,
+    section: "Quality",
   },
   {
     key: "colorMode",
@@ -48,6 +50,26 @@ const convertOptions = [
       { value: "grayscale", label: "Grayscale" },
       { value: "monochrome", label: "Black & White" },
     ],
+    section: "Color",
+  },
+  {
+    key: "pageRange",
+    label: "Page Range",
+    type: "text" as const,
+    defaultValue: "all",
+    section: "Pages",
+  },
+  {
+    key: "extractMode",
+    label: "Extract Mode",
+    type: "select" as const,
+    defaultValue: "all",
+    selectOptions: [
+      { value: "all", label: "All Pages" },
+      { value: "range", label: "Page Range" },
+      { value: "selected", label: "Selected Pages" },
+    ],
+    section: "Pages",
   },
 ]
 

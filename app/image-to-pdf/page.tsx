@@ -53,6 +53,29 @@ const convertOptions = [
     defaultValue: true,
     section: "Layout",
   },
+  {
+    key: "imageQuality",
+    label: "Image Quality",
+    type: "slider" as const,
+    defaultValue: 95,
+    min: 50,
+    max: 100,
+    step: 5,
+    section: "Quality",
+  },
+  {
+    key: "compressionLevel",
+    label: "Compression",
+    type: "select" as const,
+    defaultValue: "medium",
+    selectOptions: [
+      { value: "none", label: "No Compression" },
+      { value: "low", label: "Low Compression" },
+      { value: "medium", label: "Medium Compression" },
+      { value: "high", label: "High Compression" },
+    ],
+    section: "Quality",
+  },
 ]
 
 async function convertImagesToPDF(files: any[], options: any) {
@@ -67,8 +90,16 @@ async function convertImagesToPDF(files: any[], options: any) {
     // Extract actual File objects
     const imageFiles = files.map((f) => f.originalFile || f.file)
 
-    // Process image to PDF conversion using real PDF-lib
-    const pdfBytes = await PDFProcessor.imagesToPDF(imageFiles)
+    // Process image to PDF conversion with enhanced options
+    const pdfBytes = await PDFProcessor.imagesToPDF(imageFiles, {
+      pageSize: options.pageSize,
+      orientation: options.orientation,
+      margin: options.margin,
+      fitToPage: options.fitToPage,
+      maintainAspectRatio: options.maintainAspectRatio,
+      quality: options.imageQuality,
+      compressionLevel: options.compressionLevel
+    })
 
     // Create download blob
     const blob = new Blob([pdfBytes], { type: "application/pdf" })

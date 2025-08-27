@@ -177,11 +177,11 @@ export default function HomePage() {
                   placeholder="Search for tools... (e.g., compress image, merge pdf, qr generator)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-14 pr-32 h-16 text-lg bg-white/90 backdrop-blur-sm border-2 border-gray-200 rounded-2xl shadow-lg focus:border-blue-500 focus:shadow-xl transition-all"
+                  className="pl-14 pr-32 h-16 text-lg bg-white/95 backdrop-blur-sm border-2 border-gray-200 rounded-2xl shadow-lg focus:border-blue-500 focus:shadow-xl transition-all hover:shadow-xl"
                 />
                 <Button 
                   type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-12 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-semibold"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-12 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                 >
                   Search
                 </Button>
@@ -190,19 +190,19 @@ export default function HomePage() {
             <div className="flex justify-center mt-4 space-x-4 text-sm">
               <button 
                 onClick={() => setSearchQuery("compress image")}
-                className="text-gray-500 hover:text-blue-600 transition-colors"
+                className="text-gray-500 hover:text-blue-600 transition-colors hover:underline"
               >
                 compress image
               </button>
               <button 
                 onClick={() => setSearchQuery("merge pdf")}
-                className="text-gray-500 hover:text-blue-600 transition-colors"
+                className="text-gray-500 hover:text-blue-600 transition-colors hover:underline"
               >
                 merge pdf
               </button>
               <button 
                 onClick={() => setSearchQuery("qr generator")}
-                className="text-gray-500 hover:text-blue-600 transition-colors"
+                className="text-gray-500 hover:text-blue-600 transition-colors hover:underline"
               >
                 qr generator
               </button>

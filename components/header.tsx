@@ -286,26 +286,26 @@ export function Header() {
                   placeholder="Search tools..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64 bg-gray-50 border-gray-200 focus:bg-white"
+                  className="pl-10 w-64 bg-gray-50 border-gray-200 focus:bg-white hover:bg-white transition-colors"
                 />
               </div>
               
               {/* Search Results Dropdown */}
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto backdrop-blur-sm">
                   {searchResults.map((tool) => (
                     <button
                       key={tool.href}
                       onClick={() => handleSearchSelect(tool.href)}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                      className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors group"
                     >
-                      <div className="font-medium text-gray-900">{tool.name}</div>
-                      <div className="text-sm text-gray-500">{tool.category}</div>
+                      <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{tool.name}</div>
+                      <div className="text-sm text-gray-500 group-hover:text-blue-500">{tool.category}</div>
                     </button>
                   ))}
                   {searchQuery && (
                     <Link href={`/search?q=${encodeURIComponent(searchQuery)}`}>
-                      <div className="px-4 py-3 text-center text-blue-600 hover:bg-blue-50 border-t border-gray-100 font-medium">
+                      <div className="px-4 py-3 text-center text-blue-600 hover:bg-blue-50 border-t border-gray-100 font-medium transition-colors">
                         View all results for "{searchQuery}"
                       </div>
                     </Link>

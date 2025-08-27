@@ -576,9 +576,9 @@ export default function QRCodeGeneratorPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-green-200">
-          <div className="grid grid-cols-1 lg:grid-cols-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             {/* Left Panel - Content Input */}
-            <div className="lg:col-span-2 p-8 space-y-8">
+            <div className="lg:col-span-1 xl:col-span-2 p-8 space-y-8">
               {/* Content Input */}
               <Card>
                 <CardHeader className="pb-6">
@@ -614,7 +614,7 @@ export default function QRCodeGeneratorPage() {
                           type="color"
                           value={foregroundColor}
                           onChange={(e) => setForegroundColor(e.target.value)}
-                          className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer shadow-sm"
+                          className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
                         />
                         <Input
                           value={foregroundColor}
@@ -632,7 +632,7 @@ export default function QRCodeGeneratorPage() {
                           type="color"
                           value={backgroundColor}
                           onChange={(e) => setBackgroundColor(e.target.value)}
-                          className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer shadow-sm"
+                          className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
                         />
                         <Input
                           value={backgroundColor}
@@ -686,7 +686,7 @@ export default function QRCodeGeneratorPage() {
                       ].map((social) => (
                         <button
                           key={social.name}
-                          className="w-12 h-12 rounded-lg border-2 border-gray-200 hover:border-gray-400 flex items-center justify-center text-xl transition-all hover:scale-110"
+                          className="w-12 h-12 rounded-lg border-2 border-gray-200 hover:border-gray-400 flex items-center justify-center text-xl transition-all hover:scale-110 hover:shadow-md"
                           style={{ backgroundColor: social.color + "20" }}
                           title={social.name}
                         >
@@ -734,7 +734,7 @@ export default function QRCodeGeneratorPage() {
                       {["square", "rounded", "dots", "extra-rounded"].map((style) => (
                         <button
                           key={style}
-                          className="p-3 border-2 border-gray-200 rounded-lg hover:border-indigo-400 transition-all hover:scale-105 text-xs font-medium capitalize"
+                          className="p-3 border-2 border-gray-200 rounded-lg hover:border-indigo-400 transition-all hover:scale-105 hover:shadow-md text-xs font-medium capitalize"
                         >
                           {style}
                         </button>
@@ -746,7 +746,7 @@ export default function QRCodeGeneratorPage() {
             </div>
 
             {/* Right Panel - QR Code Preview */}
-            <div className="bg-gradient-to-b from-gray-50 to-gray-100 p-8 space-y-8">
+            <div className="bg-gradient-to-b from-gray-50 to-gray-100 p-8 space-y-8 lg:col-span-1">
               {/* QR Code Display */}
               <div className="bg-white p-8 rounded-xl shadow-lg text-center border border-gray-200">
                 {qrDataUrl ? (
@@ -754,13 +754,13 @@ export default function QRCodeGeneratorPage() {
                     <img
                       src={qrDataUrl}
                       alt="QR Code"
-                      className="mx-auto max-w-full h-auto rounded-lg shadow-md"
+                      className="mx-auto max-w-full h-auto rounded-lg shadow-md hover:shadow-lg transition-shadow"
                       style={{ maxWidth: "300px" }}
                     />
                     <Button
                       variant="outline"
                       size="sm"
-                      className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 opacity-0 hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm"
                       onClick={() => {
                         navigator.clipboard.writeText(generateQRContent())
                         toast({ title: "Content copied", description: "QR code content copied to clipboard" })
@@ -770,7 +770,7 @@ export default function QRCodeGeneratorPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="w-64 h-64 mx-auto bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-inner">
+                  <div className="w-64 h-64 mx-auto bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center shadow-inner hover:shadow-lg transition-shadow">
                     <div className="text-center">
                       <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-500">Enter content to generate QR code</p>

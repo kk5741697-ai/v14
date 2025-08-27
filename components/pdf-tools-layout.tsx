@@ -564,7 +564,7 @@ export function PDFToolsLayout({
           {toolType === "split" && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Extract Mode</Label>
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-4 gap-2 mb-4">
                 <Button
                   variant={extractMode === "range" ? "default" : "outline"}
                   size="sm"
@@ -591,6 +591,15 @@ export function PDFToolsLayout({
                 >
                   <div className="text-lg mb-1">📊</div>
                   <span className="text-xs">Size</span>
+                </Button>
+                <Button
+                  variant={extractMode === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExtractMode("all")}
+                  className="flex flex-col items-center p-3 h-auto"
+                >
+                  <div className="text-lg mb-1">📋</div>
+                  <span className="text-xs">All</span>
                 </Button>
               </div>
               

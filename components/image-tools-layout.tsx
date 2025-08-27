@@ -28,7 +28,9 @@ import {
   Crop,
   Maximize2,
   Settings,
-  Info
+  Info,
+  Lock,
+  Unlock
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -128,7 +130,7 @@ export function ImageToolsLayout({
         
         const saveString = JSON.stringify(saveData)
         
-        if (saveString.length > 50000) { // Reduced limit for better performance
+        if (saveString.length > 50000) {
           return
         }
         

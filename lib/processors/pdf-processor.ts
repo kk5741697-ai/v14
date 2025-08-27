@@ -1,4 +1,10 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib"
+import * as pdfjsLib from "pdfjs-dist"
+
+// Configure PDF.js worker
+if (typeof window !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`
+}
 
 export interface PDFProcessingOptions {
   quality?: number
@@ -34,114 +40,70 @@ export class PDFProcessor {
   static async getPDFInfo(file: File): Promise<{ pageCount: number; pages: PDFPageInfo[] }> {
     try {
       const arrayBuffer = await file.arrayBuffer()
-      const pdf = await PDFDocument.load(arrayBuffer)
-      const pageCount = pdf.getPageCount()
+      
+      // Use PDF.js for better PDF parsing and thumbnail generation
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+      const pdfDoc = await loadingTask.promise
+      const pageCount = pdfDoc.numPages
       const pages: PDFPageInfo[] = []
 
-      // Generate enhanced PDF page thumbnails
+      // Generate real PDF page thumbnails using PDF.js
       for (let i = 0; i < pageCount; i++) {
-        const canvas = document.createElement("canvas")
-        const ctx = canvas.getContext("2d")!
-        canvas.width = 200
-        canvas.height = 280
-
-        // Create realistic page image with better visual design
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        
-        // Enhanced border with shadow effect
-        ctx.strokeStyle = "#e2e8f0"
-        ctx.lineWidth = 1
-        ctx.strokeRect(0, 0, canvas.width, canvas.height)
-        
-        // Add subtle shadow
-        ctx.fillStyle = "rgba(0, 0, 0, 0.1)"
-        ctx.fillRect(2, 2, canvas.width - 2, canvas.height - 2)
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width - 2, canvas.height - 2)
-        
-        // Header with better typography
-        ctx.fillStyle = "#1f2937"
-        ctx.font = "bold 14px system-ui"
-        ctx.textAlign = "left"
-        ctx.fillText("Document Title", 15, 30)
-        
-        // Subtitle
-        ctx.fillStyle = "#6b7280"
-        ctx.font = "10px system-ui"
-        ctx.fillText("Subtitle or section header", 15, 45)
-        
-        // Content simulation with varying content per page
-        ctx.fillStyle = "#374151"
-        ctx.font = "9px system-ui"
-        
-        // Add multiple content blocks with realistic spacing
-        for (let block = 0; block < 3; block++) {
-          const startY = 70 + block * 60
-          for (let line = 0; line < 5; line++) {
-            const lineY = startY + line * 12
-            const lineWidth = Math.random() * 120 + 100
-            
-            // Simulate text lines with varying lengths
-            ctx.fillStyle = "#374151"
-            ctx.fillRect(15, lineY, lineWidth, 8)
-            
-            // Add some spacing variation
-            if (Math.random() > 0.7) {
-              ctx.fillRect(15 + lineWidth + 10, lineY, Math.random() * 50 + 20, 8)
-            }
+        try {
+          const page = await pdfDoc.getPage(i + 1)
+          const viewport = page.getViewport({ scale: 0.5 })
+          
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")!
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
           }
-        }
-        
-        // Add visual elements like tables or images
-        if (i % 3 === 0) {
-          // Table simulation
-          ctx.strokeStyle = "#d1d5db"
-          ctx.lineWidth = 1
-          for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 3; col++) {
-              const cellX = 15 + col * 50
-              const cellY = 200 + row * 20
-              ctx.strokeRect(cellX, cellY, 50, 20)
-              
-              // Add cell content
-              ctx.fillStyle = "#9ca3af"
-              ctx.font = "8px system-ui"
-              ctx.fillText(`Cell ${row},${col}`, cellX + 5, cellY + 12)
-            }
-          }
-        } else if (i % 3 === 1) {
-          // Image placeholder
-          ctx.fillStyle = "#e5e7eb"
-          ctx.fillRect(15, 200, 80, 60)
-          ctx.strokeStyle = "#d1d5db"
-          ctx.strokeRect(15, 200, 80, 60)
-          ctx.fillStyle = "#9ca3af"
-          ctx.font = "8px system-ui"
+          
+          await page.render(renderContext).promise
+          
+          pages.push({
+            pageNumber: i + 1,
+            width: viewport.width,
+            height: viewport.height,
+            thumbnail: canvas.toDataURL("image/png", 0.8),
+            rotation: 0,
+            selected: false
+          })
+        } catch (error) {
+          console.warn(`Failed to render page ${i + 1}:`, error)
+          // Fallback to placeholder
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")!
+          canvas.width = 200
+          canvas.height = 280
+          
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.strokeStyle = "#e2e8f0"
+          ctx.strokeRect(0, 0, canvas.width, canvas.height)
+          
+          ctx.fillStyle = "#6b7280"
+          ctx.font = "12px Arial"
           ctx.textAlign = "center"
-          ctx.fillText("Image", 55, 235)
-          ctx.textAlign = "left"
+          ctx.fillText(`Page ${i + 1}`, canvas.width / 2, canvas.height / 2)
+          
+          pages.push({
+            pageNumber: i + 1,
+            width: 200,
+            height: 280,
+            thumbnail: canvas.toDataURL("image/png"),
+            rotation: 0,
+            selected: false
+          })
         }
-        
-        // Enhanced footer with page info
-        ctx.fillStyle = "#9ca3af"
-        ctx.font = "8px system-ui"
-        ctx.textAlign = "center"
-        ctx.fillText(`Page ${i + 1} of ${pageCount}`, canvas.width / 2, canvas.height - 15)
-        
-        // Add document info
-        ctx.textAlign = "left"
-        ctx.fillText(file.name.substring(0, 20), 15, canvas.height - 15)
-
-        pages.push({
-          pageNumber: i + 1,
-          width: 200,
-          height: 280,
-          thumbnail: canvas.toDataURL("image/png", 0.8),
-          rotation: 0,
-          selected: false
-        })
       }
+
+      // Clean up
+      pdfDoc.destroy()
 
       return { pageCount, pages }
     } catch (error) {
@@ -406,73 +368,62 @@ export class PDFProcessor {
   static async pdfToImages(file: File, options: PDFProcessingOptions = {}): Promise<Blob[]> {
     try {
       const arrayBuffer = await file.arrayBuffer()
-      const pdf = await PDFDocument.load(arrayBuffer)
+      
+      // Use PDF.js for better image conversion
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+      const pdfDoc = await loadingTask.promise
       const images: Blob[] = []
-      const pageCount = pdf.getPageCount()
+      const pageCount = pdfDoc.numPages
+      const dpi = Math.max(72, Math.min(600, options.dpi || 150))
+      const scale = dpi / 72
 
-      // Generate enhanced placeholder images for each page
+      // Convert each page to high-quality image
       for (let i = 0; i < pageCount; i++) {
-        const canvas = document.createElement("canvas")
-        const ctx = canvas.getContext("2d")!
-        
-        const dpi = Math.max(72, Math.min(600, options.dpi || 150))
-        canvas.width = Math.floor(8.5 * dpi) // Letter size width
-        canvas.height = Math.floor(11 * dpi) // Letter size height
-
-        // Create realistic page image
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.strokeStyle = "#e5e7eb"
-        ctx.strokeRect(0, 0, canvas.width, canvas.height)
-        
-        // Add realistic content with better quality
-        ctx.fillStyle = "#1f2937"
-        ctx.font = `bold ${Math.floor(dpi / 6)}px Arial`
-        ctx.textAlign = "left"
-        ctx.fillText("Document Content", 50, 80)
-        
-        ctx.fillStyle = "#374151"
-        ctx.font = `${Math.floor(dpi / 10)}px Arial`
-        
-        // Add multiple content blocks with better spacing
-        for (let block = 0; block < 4; block++) {
-          const startY = 120 + block * 150
-          for (let line = 0; line < 6; line++) {
-            const lineY = startY + line * 18
-            const lineWidth = Math.random() * 200 + 300
-            
-            // Create more realistic text simulation
-            ctx.fillStyle = `rgba(55, 65, 81, ${0.8 + Math.random() * 0.2})`
-            ctx.fillRect(50, lineY, lineWidth, 10)
-            
-            // Add word spacing
-            if (Math.random() > 0.6) {
-              ctx.fillRect(50 + lineWidth + 15, lineY, Math.random() * 100 + 50, 10)
-            }
+        try {
+          const page = await pdfDoc.getPage(i + 1)
+          const viewport = page.getViewport({ scale })
+          
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")!
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          
+          // Apply color mode
+          if (options.colorMode === "grayscale") {
+            ctx.filter = "grayscale(100%)"
+          } else if (options.colorMode === "monochrome") {
+            ctx.filter = "grayscale(100%) contrast(200%) brightness(150%)"
           }
+          
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+          }
+          
+          await page.render(renderContext).promise
+          
+          const quality = Math.max(0.1, Math.min(1, (options.imageQuality || 90) / 100))
+          const format = options.outputFormat || "png"
+
+          const blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob)
+              } else {
+                reject(new Error("Failed to create image blob"))
+              }
+            }, `image/${format}`, quality)
+          })
+
+          images.push(blob)
+        } catch (error) {
+          console.error(`Failed to convert page ${i + 1}:`, error)
+          throw new Error(`Failed to convert page ${i + 1} to image`)
         }
-        
-        // Page number with better styling
-        ctx.fillStyle = "#9ca3af"
-        ctx.font = `${Math.floor(dpi / 8)}px Arial`
-        ctx.textAlign = "center"
-        ctx.fillText(`${i + 1}`, canvas.width / 2, canvas.height - 50)
-
-        const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
-        const format = options.outputFormat || "png"
-
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create image blob"))
-            }
-          }, `image/${format}`, quality)
-        })
-
-        images.push(blob)
       }
+
+      // Clean up
+      pdfDoc.destroy()
 
       return images
     } catch (error) {
@@ -544,6 +495,26 @@ export class PDFProcessor {
       }
 
       const pdf = await PDFDocument.create()
+      
+      // Enhanced page size handling
+      const getPageDimensions = (pageSize: string, orientation: string) => {
+        const sizes = {
+          a4: { width: 595, height: 842 },
+          letter: { width: 612, height: 792 },
+          legal: { width: 612, height: 1008 },
+          a3: { width: 842, height: 1191 }
+        }
+        
+        const size = sizes[pageSize as keyof typeof sizes] || sizes.a4
+        return orientation === "landscape" 
+          ? { width: size.height, height: size.width }
+          : size
+      }
+      
+      const pageDimensions = getPageDimensions(
+        options.pageSize || "a4", 
+        options.orientation || "portrait"
+      )
 
       for (const imageFile of imageFiles) {
         try {
@@ -585,22 +556,34 @@ export class PDFProcessor {
             image = await pdf.embedJpg(jpegArrayBuffer)
           }
 
-          const page = pdf.addPage()
+          const page = pdf.addPage([pageDimensions.width, pageDimensions.height])
           const { width, height } = page.getSize()
 
           // Enhanced image fitting with better aspect ratio handling
           const imageAspectRatio = image.width / image.height
           const pageAspectRatio = width / height
+          const margin = Math.max(20, Math.min(60, options.margin || 20))
 
           let imageWidth, imageHeight
-          const margin = Math.max(20, Math.min(60, options.quality || 40))
 
-          if (imageAspectRatio > pageAspectRatio) {
-            imageWidth = width - margin * 2
-            imageHeight = imageWidth / imageAspectRatio
+          if (options.fitToPage) {
+            if (imageAspectRatio > pageAspectRatio) {
+              imageWidth = width - margin * 2
+              imageHeight = imageWidth / imageAspectRatio
+            } else {
+              imageHeight = height - margin * 2
+              imageWidth = imageHeight * imageAspectRatio
+            }
           } else {
-            imageHeight = height - margin * 2
-            imageWidth = imageHeight * imageAspectRatio
+            // Use original size if it fits, otherwise scale down
+            imageWidth = Math.min(image.width, width - margin * 2)
+            imageHeight = Math.min(image.height, height - margin * 2)
+            
+            if (options.maintainAspectRatio) {
+              const scale = Math.min(imageWidth / image.width, imageHeight / image.height)
+              imageWidth = image.width * scale
+              imageHeight = image.height * scale
+            }
           }
 
           const x = (width - imageWidth) / 2
@@ -615,7 +598,7 @@ export class PDFProcessor {
 
         } catch (error) {
           console.error(`Failed to process image ${imageFile.name}:`, error)
-          // Continue with other images instead of failing completely
+          throw new Error(`Failed to process image ${imageFile.name}`)
         }
       }
 

@@ -31,6 +31,9 @@ import {
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
+// Import PDFProcessor from the correct location
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
+
 interface PDFFile {
   id: string
   file: File

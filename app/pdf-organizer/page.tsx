@@ -2,7 +2,7 @@
 
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { ArrowUpDown } from "lucide-react"
-import { PDFProcessor } from "@/lib/pdf-processor"
+import { PDFProcessor } from "@/lib/processors/pdf-processor"
 
 const organizeOptions = [
   {

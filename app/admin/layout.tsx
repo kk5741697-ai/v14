@@ -1,4 +1,6 @@
-import type React from "react"
+"use client"
+
+import React from "react"
 import {
   Sidebar,
   SidebarContent,

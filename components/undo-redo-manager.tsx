@@ -134,46 +134,4 @@ export function UndoRedoManager({
   )
 
   // Expose saveState function for parent components
-  return {
-    component: (
-      <div className={`flex items-center space-x-1 ${className}`}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={undo}
-          disabled={!canUndo}
-          title={canUndo ? `Undo: ${history[currentIndex]?.description}` : "Nothing to undo"}
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={redo}
-          disabled={!canRedo}
-          title={canRedo ? `Redo: ${history[currentIndex + 1]?.description}` : "Nothing to redo"}
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={reset}
-          disabled={!canReset}
-          title="Reset to initial state"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-        
-        {history.length > 0 && (
-          <span className="text-xs text-gray-500 ml-2">
-            {currentIndex + 1}/{history.length}
-          </span>
-        )}
-      </div>
-    ),
-    saveState
-  }
 }

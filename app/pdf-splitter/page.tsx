@@ -3,7 +3,6 @@
 import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Scissors } from "lucide-react"
 import { PDFProcessor } from "@/lib/processors/pdf-processor"
-import type JSZip from "jszip"
 
 const splitOptions = [
   {

@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { useEffect, useRef, useState } from "react"
 import { adManager, type AdSlot } from "@/lib/ads/ad-manager"
 import { cn } from "@/lib/utils"

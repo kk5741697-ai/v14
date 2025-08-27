@@ -1,18 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { SubscriptionService } from "@/lib/stripe/subscription-service"
-import { getServerSession } from "next-auth"
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // Mock user session for demo
+    const userId = "demo-user-id"
 
     const { returnUrl } = await request.json()
 
-    const portalSession = await SubscriptionService.createBillingPortalSession(session.user.id, returnUrl)
+    const portalSession = await SubscriptionService.createBillingPortalSession(userId, returnUrl)
 
     return NextResponse.json({ url: portalSession.url })
   } catch (error) {

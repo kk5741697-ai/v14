@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { QRProcessor } from "@/lib/processors/qr-processor"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import React from "react"
 import {
   QrCode,
   Download,

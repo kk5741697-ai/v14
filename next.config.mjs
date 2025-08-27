@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    esmExternals: 'loose',
+    serverComponentsExternalPackages: ['pdf-lib', 'pdfjs-dist']
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -13,11 +17,6 @@ const nextConfig = {
     // Enhanced path resolution
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': '.',
-      '@/app': './app',
-      '@/components': './components',
-      '@/hooks': './hooks',
-      '@/lib': './lib',
     }
 
     // Handle canvas and worker files
@@ -26,7 +25,20 @@ const nextConfig = {
       canvas: false,
       fs: false,
       path: false,
+      crypto: false,
+      stream: false,
+      util: false,
+      buffer: false,
     }
+
+    // Fix for PDF.js and other libraries
+    config.module.rules.push({
+      test: /\.m?js$/,
+      type: 'javascript/auto',
+      resolve: {
+        fullySpecified: false,
+      },
+    })
 
     return config
   },

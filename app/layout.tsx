@@ -1,5 +1,5 @@
-import type React from "react"
-import type { Metadata } from "next"
+import React from "react"
+import { Metadata } from "next"
 import { Inter, Poppins } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"

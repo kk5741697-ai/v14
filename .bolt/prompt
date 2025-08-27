@@ -128,4 +128,7 @@ and also check for function errors, syntax errors etc problems can be happend.
 -------------------
 i  have attached some screenshorts also, you need to make improvements our current tools features, functionality, UI/UX etc.
 
+--------------
+
+also currently the codebase has much more problems eg: syntax issue, function issue, import issue etc.
 you need to handle more better way to keep constenticy.

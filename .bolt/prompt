@@ -131,4 +131,8 @@ i  have attached some screenshorts also, you need to make improvements our curre
 --------------
 
 also currently the codebase has much more problems eg: syntax issue, function issue, import issue etc.
+
+--------
+
+all tools process must be client side, not server side process, it can save the much more server resources.
 you need to handle more better way to keep constenticy.

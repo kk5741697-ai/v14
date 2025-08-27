@@ -133,8 +133,8 @@ export function ImageToolsLayout({
         
         const saveString = JSON.stringify(saveData)
         
-        // Check if we're approaching localStorage quota
-        if (saveString.length > 500000) { // 500KB limit
+        // Check if we're approaching localStorage quota (reduced limit)
+        if (saveString.length > 100000) { // 100KB limit
           console.warn("Auto-save data too large, skipping")
           return
         }
@@ -142,25 +142,29 @@ export function ImageToolsLayout({
         localStorage.setItem(`pixora-${toolType}-autosave`, saveString)
       } catch (error) {
         if (error instanceof Error && error.name === 'QuotaExceededError') {
-          // Clear old auto-saves to free up space
+          // Clear ALL auto-saves to free up space immediately
           Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('pixora-') && key.endsWith('-autosave')) {
+            if (key.startsWith('pixora-')) {
               try {
-                const data = JSON.parse(localStorage.getItem(key) || '{}')
-                // Remove saves older than 1 hour
-                if (Date.now() - (data.timestamp || 0) > 3600000) {
-                  localStorage.removeItem(key)
-                }
+                localStorage.removeItem(key)
               } catch {
                 localStorage.removeItem(key)
               }
             }
           })
           
+          // Try to save again with minimal data
+          try {
+            const minimalSave = { timestamp: Date.now() }
+            localStorage.setItem(`pixora-${toolType}-autosave`, JSON.stringify(minimalSave))
+          } catch {
+            // If still failing, disable auto-save completely
+            console.warn("Auto-save completely disabled due to storage constraints")
+          }
+          
           toast({
-            title: "Storage limit reached",
-            description: "Auto-save disabled to prevent storage issues",
-            variant: "destructive"
+            title: "Storage cleared",
+            description: "Browser storage was full and has been cleared",
           })
         }
       }
@@ -571,26 +575,38 @@ export function ImageToolsLayout({
               
               <div className="flex-1 flex items-center justify-center p-6">
                 <div 
-                  className="max-w-md w-full border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200 p-12"
+                  className="max-w-lg w-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-300 p-16 group"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="h-16 w-16 mb-4 text-gray-400" />
-                  <h3 className="text-xl font-medium mb-2">Drop images here</h3>
-                  <p className="text-gray-400 mb-4">or click to browse</p>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all"></div>
+                    <Upload className="relative h-20 w-20 text-blue-500 group-hover:text-blue-600 transition-colors group-hover:scale-110 transform duration-300" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-3 text-gray-700 group-hover:text-blue-600 transition-colors">Drop images here</h3>
+                  <p className="text-gray-500 mb-6 text-lg">or click to browse files</p>
+                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 group-hover:scale-105">
                     <Upload className="h-4 w-4 mr-2" />
-                    Select Images
+                    Choose Images
                   </Button>
-                  <p className="text-xs text-gray-400 mt-4">
-                    Supports: {supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
-                  </p>
-                  {singleFileOnly && (
-                    <p className="text-xs text-blue-600 mt-2 font-medium">
-                      Single file mode for precision editing
+                  <div className="mt-6 space-y-2">
+                    <p className="text-sm text-gray-500 font-medium">
+                      Supported formats: {supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
                     </p>
+                    <p className="text-xs text-gray-400">
+                      Maximum {maxFiles} files • Up to 100MB each
+                    </p>
+                  </div>
+                  {singleFileOnly && (
+                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700 font-medium flex items-center">
+                        <Crop className="h-4 w-4 mr-2" />
+                        Single file mode for precision editing
+                      </p>
+                    </div>
                   )}
+                  </p>
                 </div>
               </div>
             </div>

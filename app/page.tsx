@@ -125,17 +125,35 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-20 px-4">
+      <section className="bg-gradient-to-br from-blue-50 via-white to-purple-50 py-24 px-4 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl"></div>
+          <div className="absolute top-40 right-20 w-24 h-24 bg-purple-500 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-green-500 rounded-full blur-3xl"></div>
+        </div>
+        
         <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold text-gray-900 mb-4">
-            Professional Online Tools Platform
+          <div className="mb-8">
+            <div className="inline-flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-full px-6 py-2 border border-gray-200 shadow-lg mb-6">
+              <Wrench className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-semibold text-gray-700">300+ Professional Tools</span>
+            </div>
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-heading font-bold text-gray-900 mb-6 leading-tight">
+            Every Tool You Need
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+              In One Place
+            </span>
           </h1>
-          <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
-            Access 300+ professional tools for PDF, image, QR, code, SEO, and utility tasks. Fast, secure, and easy to use.
+          <p className="text-xl md:text-2xl text-gray-600 mb-16 max-w-4xl mx-auto leading-relaxed">
+            Transform, optimize, and convert your files with our comprehensive suite of professional tools. 
+            <span className="font-semibold text-gray-800">Fast, secure, and completely free.</span>
           </p>
 
           {/* Tool Categories */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
+          <div className="flex flex-wrap justify-center gap-4 mb-16">
             {toolCategories.map((category) => (
               <Link
                 key={category.name}
@@ -143,10 +161,10 @@ export default function HomePage() {
               >
                 <Button
                   variant={category.active ? "default" : "outline"}
-                  className={`px-6 py-2 rounded-full transition-all duration-200 ${
+                  className={`px-8 py-3 rounded-full transition-all duration-300 font-semibold text-base ${
                     category.active
-                      ? "bg-gray-900 text-white hover:bg-gray-800 shadow-lg"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:shadow-md"
+                      ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl scale-105"
+                      : "bg-white/80 backdrop-blur-sm text-gray-700 border-gray-300 hover:bg-white hover:shadow-lg hover:scale-105 hover:border-gray-400"
                   }`}
                 >
                   {category.name}
@@ -156,27 +174,27 @@ export default function HomePage() {
           </div>
 
           {/* Featured Tools Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {featuredTools.map((tool) => {
               const Icon = tool.icon
               return (
                 <Link
                   key={tool.title}
                   href={tool.href}
-                  className="block bg-white rounded-xl border border-gray-200 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+                  className="block bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-200 p-8 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer group hover:border-gray-300"
                 >
                   {tool.isNew && (
-                    <Badge className="mb-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">
+                    <Badge className="mb-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-semibold px-3 py-1 shadow-lg">
                       New!
                     </Badge>
                   )}
-                  <div className={`inline-flex p-3 rounded-xl ${tool.iconBg} mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                    <Icon className={`h-6 w-6 ${tool.iconColor}`} />
+                  <div className={`inline-flex p-4 rounded-2xl ${tool.iconBg} mb-6 group-hover:scale-125 transition-transform duration-300 shadow-lg group-hover:shadow-xl`}>
+                    <Icon className={`h-8 w-8 ${tool.iconColor}`} />
                   </div>
-                  <h3 className="font-heading font-semibold text-gray-900 mb-2 text-left group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-heading font-bold text-xl text-gray-900 mb-3 text-left group-hover:text-blue-600 transition-colors">
                     {tool.title}
                   </h3>
-                  <p className="text-sm text-gray-600 text-left leading-relaxed">
+                  <p className="text-base text-gray-600 text-left leading-relaxed">
                     {tool.description}
                   </p>
                 </Link>

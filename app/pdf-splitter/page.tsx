@@ -11,13 +11,25 @@ const splitOptions = [
     key: "splitMode",
     label: "Split Mode",
     type: "select" as const,
-    defaultValue: "pages",
+    defaultValue: "range",
     selectOptions: [
-      { value: "pages", label: "Extract Selected Pages" },
       { value: "range", label: "Page Ranges" },
+      { value: "pages", label: "Extract Selected Pages" },
       { value: "size", label: "Equal Parts" },
     ],
     section: "Split Settings",
+  },
+  {
+    key: "extractMode",
+    label: "Extract Mode",
+    type: "select" as const,
+    defaultValue: "all",
+    selectOptions: [
+      { value: "all", label: "Extract all pages" },
+      { value: "pages", label: "Select pages" },
+    ],
+    section: "Split Settings",
+    condition: (options) => options.splitMode === "pages",
   },
   {
     key: "rangeMode",
@@ -71,7 +83,7 @@ async function splitPDF(files: any[], options: any) {
     // Handle different split modes
     let ranges: Array<{ from: number; to: number }> = []
     
-    if (options.splitMode === "pages" && options.selectedPages) {
+    if (options.splitMode === "pages" && options.selectedPages && options.selectedPages.length > 0) {
       // Split into individual pages based on selected pages
       const selectedPageNumbers = options.selectedPages.map((pageKey: string) => {
         const parts = pageKey.split('-')
@@ -80,7 +92,7 @@ async function splitPDF(files: any[], options: any) {
       
       ranges = selectedPageNumbers.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
     } else if (options.splitMode === "range") {
-      if (options.rangeMode === "custom") {
+      if (options.rangeMode === "custom" && options.pageRanges) {
         ranges = options.pageRanges || [{ from: 1, to: file.pageCount }]
       } else {
         // Fixed intervals
@@ -98,17 +110,28 @@ async function splitPDF(files: any[], options: any) {
         to: Math.min((i + 1) * pagesPerPart, file.pageCount)
       }))
     } else {
-      // Extract all pages as individual files
-      ranges = Array.from({ length: file.pageCount }, (_, i) => ({ from: i + 1, to: i + 1 }))
+      // Default: extract all pages as individual files
+      ranges = Array.from({ length: Math.min(file.pageCount, 50) }, (_, i) => ({ from: i + 1, to: i + 1 }))
     }
 
     if (ranges.length === 0) {
       return {
         success: false,
-        error: "No pages selected for splitting",
+        error: "No pages selected for splitting. Please select pages or define ranges.",
       }
     }
 
+    // Validate ranges
+    const invalidRanges = ranges.filter(range => 
+      range.from < 1 || range.to > file.pageCount || range.from > range.to
+    )
+    
+    if (invalidRanges.length > 0) {
+      return {
+        success: false,
+        error: `Invalid page ranges detected. Please check your page numbers (1-${file.pageCount}).`,
+      }
+    }
     const splitResults = await PDFProcessor.splitPDF(file.originalFile || file.file, ranges)
 
     if (options.mergeRanges && splitResults.length > 1) {

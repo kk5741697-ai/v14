@@ -81,6 +81,20 @@ const convertOptions = [
     section: "Transform",
   },
   {
+    key: "autoOptimize",
+    label: "Auto Optimize Quality",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Output",
+  },
+  {
+    key: "removeMetadata",
+    label: "Remove EXIF Data",
+    type: "checkbox" as const,
+    defaultValue: false,
+    section: "Output",
+  },
+  {
     key: "resizeWidth",
     label: "Resize Width (px)",
     type: "input" as const,

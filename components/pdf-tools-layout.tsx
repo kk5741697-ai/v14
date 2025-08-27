@@ -116,7 +116,7 @@ export function PDFToolsLayout({
         
         const saveString = JSON.stringify(saveData)
         
-        if (saveString.length > 500000) {
+        if (saveString.length > 100000) { // Reduced limit
           console.warn("Auto-save data too large, skipping")
           return
         }
@@ -124,17 +124,20 @@ export function PDFToolsLayout({
         localStorage.setItem(`pixora-${toolType}-autosave`, saveString)
       } catch (error) {
         if (error instanceof Error && error.name === 'QuotaExceededError') {
+          // Clear ALL storage immediately
           Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('pixora-') && key.endsWith('-autosave')) {
+            if (key.startsWith('pixora-')) {
               try {
-                const data = JSON.parse(localStorage.getItem(key) || '{}')
-                if (Date.now() - (data.timestamp || 0) > 3600000) {
-                  localStorage.removeItem(key)
-                }
+                localStorage.removeItem(key)
               } catch {
                 localStorage.removeItem(key)
               }
             }
+          })
+          
+          toast({
+            title: "Storage cleared",
+            description: "Browser storage was full and has been cleared"
           })
         }
       }
@@ -151,7 +154,7 @@ export function PDFToolsLayout({
       if (file.type !== "application/pdf") continue
 
       try {
-        const { pageCount, pages } = await this.generateRealPDFThumbnails(file)
+        const { pageCount, pages } = await PDFProcessor.getPDFInfo(file)
         
         const pdfFile: PDFFile = {
           id: `${file.name}-${Date.now()}-${i}`,
@@ -176,133 +179,6 @@ export function PDFToolsLayout({
     setFiles(prev => [...prev, ...newFiles])
   }
 
-  const generateRealPDFThumbnails = async (file: File) => {
-    // Use PDF.js to generate real thumbnails
-    try {
-      const pdfjsLib = await import('pdfjs-dist')
-      
-      // Set worker source
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-      
-      const arrayBuffer = await file.arrayBuffer()
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-      const pageCount = pdf.numPages
-      const pages = []
-
-      for (let i = 1; i <= Math.min(pageCount, 20); i++) { // Limit to 20 pages for performance
-        try {
-          const page = await pdf.getPage(i)
-          const viewport = page.getViewport({ scale: 0.5 })
-          
-          const canvas = document.createElement("canvas")
-          const context = canvas.getContext("2d")!
-          canvas.height = viewport.height
-          canvas.width = viewport.width
-
-          await page.render({
-            canvasContext: context,
-            viewport: viewport
-          }).promise
-
-          pages.push({
-            pageNumber: i,
-            thumbnail: canvas.toDataURL("image/png", 0.8),
-            selected: extractMode === "all" || toolType !== "split",
-            width: viewport.width,
-            height: viewport.height
-          })
-        } catch (error) {
-          console.error(`Failed to render page ${i}:`, error)
-          // Fallback to placeholder
-          pages.push({
-            pageNumber: i,
-            thumbnail: this.createPlaceholderThumbnail(i, pageCount),
-            selected: extractMode === "all" || toolType !== "split",
-            width: 200,
-            height: 280
-          })
-        }
-      }
-
-      return { pageCount, pages }
-    } catch (error) {
-      console.error("PDF.js failed, using fallback:", error)
-      return this.generateFallbackThumbnails(file)
-    }
-  }
-
-  const generateFallbackThumbnails = async (file: File) => {
-    // Estimate page count based on file size (rough approximation)
-    const estimatedPageCount = Math.max(1, Math.min(50, Math.floor(file.size / 50000)))
-    const pages = []
-    
-    for (let i = 0; i < estimatedPageCount; i++) {
-      pages.push({
-        pageNumber: i + 1,
-        thumbnail: this.createPlaceholderThumbnail(i + 1, estimatedPageCount),
-        selected: extractMode === "all" || toolType !== "split",
-        width: 200,
-        height: 280
-      })
-    }
-
-    return { pageCount: estimatedPageCount, pages }
-  }
-
-  const createPlaceholderThumbnail = (pageNumber: number, totalPages: number) => {
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")!
-    canvas.width = 200
-    canvas.height = 280
-
-    // Enhanced PDF page thumbnail with realistic content
-    ctx.fillStyle = "#ffffff"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    // Border
-    ctx.strokeStyle = "#e2e8f0"
-    ctx.lineWidth = 1
-    ctx.strokeRect(0, 0, canvas.width, canvas.height)
-    
-    // Header
-    ctx.fillStyle = "#1f2937"
-    ctx.font = "bold 12px system-ui"
-    ctx.textAlign = "left"
-    ctx.fillText("Document Title", 15, 25)
-    
-    // Content simulation with more realistic layout
-    ctx.fillStyle = "#374151"
-    ctx.font = "10px system-ui"
-    const lines = [
-      "Lorem ipsum dolor sit amet, consectetur",
-      "adipiscing elit. Sed do eiusmod tempor",
-      "incididunt ut labore et dolore magna",
-      "aliqua. Ut enim ad minim veniam,",
-      "quis nostrud exercitation ullamco",
-      "laboris nisi ut aliquip ex ea commodo",
-      "consequat. Duis aute irure dolor in",
-      "reprehenderit in voluptate velit esse"
-    ]
-    
-    lines.forEach((line, lineIndex) => {
-      if (lineIndex < 8) {
-        ctx.fillText(line.substring(0, 28), 15, 45 + lineIndex * 12)
-      }
-    })
-    
-    // Visual elements
-    ctx.fillStyle = "#e5e7eb"
-    ctx.fillRect(15, 150, canvas.width - 30, 1)
-    ctx.fillRect(15, 170, canvas.width - 50, 1)
-    
-    // Page number
-    ctx.fillStyle = "#9ca3af"
-    ctx.font = "8px system-ui"
-    ctx.textAlign = "center"
-    ctx.fillText(`Page ${pageNumber} of ${totalPages}`, canvas.width / 2, canvas.height - 15)
-
-    return canvas.toDataURL("image/png", 0.8)
-  }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -521,19 +397,29 @@ export function PDFToolsLayout({
               
               <div className="flex-1 flex items-center justify-center p-6">
                 <div 
-                  className="max-w-md w-full border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-red-400 hover:bg-red-50/30 transition-all duration-200 p-12"
+                  className="max-w-lg w-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-red-400 hover:bg-red-50/30 transition-all duration-300 p-16 group"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="h-16 w-16 mb-4 text-gray-400" />
-                  <h3 className="text-xl font-medium mb-2">Drop PDF files here</h3>
-                  <p className="text-gray-400 mb-4">or click to browse</p>
-                  <Button className="bg-red-600 hover:bg-red-700">
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all"></div>
+                    <Upload className="relative h-20 w-20 text-red-500 group-hover:text-red-600 transition-colors group-hover:scale-110 transform duration-300" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-3 text-gray-700 group-hover:text-red-600 transition-colors">Drop PDF files here</h3>
+                  <p className="text-gray-500 mb-6 text-lg">or click to browse files</p>
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 group-hover:scale-105">
                     <Upload className="h-4 w-4 mr-2" />
-                    Select PDF Files
+                    Choose PDF Files
                   </Button>
-                  <p className="text-xs text-gray-400 mt-4">Maximum {maxFiles} files • Up to 100MB each</p>
+                  <div className="mt-6 space-y-2">
+                    <p className="text-sm text-gray-500 font-medium">
+                      PDF documents only
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Maximum {maxFiles} files • Up to 100MB each
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

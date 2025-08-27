@@ -38,74 +38,100 @@ export class PDFProcessor {
       const pageCount = pdf.getPageCount()
       const pages: PDFPageInfo[] = []
 
-      // Generate realistic PDF page thumbnails
+      // Generate enhanced PDF page thumbnails
       for (let i = 0; i < pageCount; i++) {
         const canvas = document.createElement("canvas")
         const ctx = canvas.getContext("2d")!
         canvas.width = 200
         canvas.height = 280
 
-        // Enhanced PDF page thumbnail with realistic content
+        // Create realistic page image with better visual design
         ctx.fillStyle = "#ffffff"
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         
-        // Border
+        // Enhanced border with shadow effect
         ctx.strokeStyle = "#e2e8f0"
         ctx.lineWidth = 1
         ctx.strokeRect(0, 0, canvas.width, canvas.height)
         
-        // Header
+        // Add subtle shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.1)"
+        ctx.fillRect(2, 2, canvas.width - 2, canvas.height - 2)
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, canvas.width - 2, canvas.height - 2)
+        
+        // Header with better typography
         ctx.fillStyle = "#1f2937"
-        ctx.font = "bold 12px system-ui"
+        ctx.font = "bold 14px system-ui"
         ctx.textAlign = "left"
-        ctx.fillText("Document Title", 15, 25)
+        ctx.fillText("Document Title", 15, 30)
+        
+        // Subtitle
+        ctx.fillStyle = "#6b7280"
+        ctx.font = "10px system-ui"
+        ctx.fillText("Subtitle or section header", 15, 45)
         
         // Content simulation with varying content per page
         ctx.fillStyle = "#374151"
-        ctx.font = "10px system-ui"
-        const lines = [
-          "Lorem ipsum dolor sit amet, consectetur",
-          "adipiscing elit. Sed do eiusmod tempor",
-          "incididunt ut labore et dolore magna",
-          "aliqua. Ut enim ad minim veniam,",
-          "quis nostrud exercitation ullamco",
-          "laboris nisi ut aliquip ex ea commodo",
-          "consequat. Duis aute irure dolor in",
-          "reprehenderit in voluptate velit esse",
-          "cillum dolore eu fugiat nulla pariatur."
-        ]
+        ctx.font = "9px system-ui"
         
-        lines.forEach((line, lineIndex) => {
-          if (lineIndex < 8) {
-            // Vary content slightly per page
-            const pageVariation = i % 3
-            const adjustedLine = pageVariation === 0 ? line : 
-                               pageVariation === 1 ? line.substring(0, 25) + "..." :
-                               line.substring(0, 30)
-            ctx.fillText(adjustedLine, 15, 45 + lineIndex * 12)
+        // Add multiple content blocks with realistic spacing
+        for (let block = 0; block < 3; block++) {
+          const startY = 70 + block * 60
+          for (let line = 0; line < 5; line++) {
+            const lineY = startY + line * 12
+            const lineWidth = Math.random() * 120 + 100
+            
+            // Simulate text lines with varying lengths
+            ctx.fillStyle = "#374151"
+            ctx.fillRect(15, lineY, lineWidth, 8)
+            
+            // Add some spacing variation
+            if (Math.random() > 0.7) {
+              ctx.fillRect(15 + lineWidth + 10, lineY, Math.random() * 50 + 20, 8)
+            }
           }
-        })
-        
-        // Add some visual elements
-        ctx.fillStyle = "#e5e7eb"
-        ctx.fillRect(15, 150, canvas.width - 30, 1)
-        ctx.fillRect(15, 170, canvas.width - 50, 1)
-        
-        // Add page-specific elements
-        if (i === 0) {
-          ctx.fillStyle = "#3b82f6"
-          ctx.fillRect(15, 180, 50, 20)
-          ctx.fillStyle = "#ffffff"
-          ctx.font = "8px system-ui"
-          ctx.textAlign = "center"
-          ctx.fillText("TITLE", 40, 192)
         }
         
-        // Footer
+        // Add visual elements like tables or images
+        if (i % 3 === 0) {
+          // Table simulation
+          ctx.strokeStyle = "#d1d5db"
+          ctx.lineWidth = 1
+          for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+              const cellX = 15 + col * 50
+              const cellY = 200 + row * 20
+              ctx.strokeRect(cellX, cellY, 50, 20)
+              
+              // Add cell content
+              ctx.fillStyle = "#9ca3af"
+              ctx.font = "8px system-ui"
+              ctx.fillText(`Cell ${row},${col}`, cellX + 5, cellY + 12)
+            }
+          }
+        } else if (i % 3 === 1) {
+          // Image placeholder
+          ctx.fillStyle = "#e5e7eb"
+          ctx.fillRect(15, 200, 80, 60)
+          ctx.strokeStyle = "#d1d5db"
+          ctx.strokeRect(15, 200, 80, 60)
+          ctx.fillStyle = "#9ca3af"
+          ctx.font = "8px system-ui"
+          ctx.textAlign = "center"
+          ctx.fillText("Image", 55, 235)
+          ctx.textAlign = "left"
+        }
+        
+        // Enhanced footer with page info
         ctx.fillStyle = "#9ca3af"
         ctx.font = "8px system-ui"
         ctx.textAlign = "center"
         ctx.fillText(`Page ${i + 1} of ${pageCount}`, canvas.width / 2, canvas.height - 15)
+        
+        // Add document info
+        ctx.textAlign = "left"
+        ctx.fillText(file.name.substring(0, 20), 15, canvas.height - 15)
 
         pages.push({
           pageNumber: i + 1,
@@ -126,26 +152,35 @@ export class PDFProcessor {
 
   static async mergePDFs(files: File[], options: PDFProcessingOptions = {}): Promise<Uint8Array> {
     try {
+      if (files.length < 2) {
+        throw new Error("At least 2 PDF files are required for merging")
+      }
+
       const mergedPdf = await PDFDocument.create()
 
       for (const file of files) {
-        const arrayBuffer = await file.arrayBuffer()
-        const pdf = await PDFDocument.load(arrayBuffer)
-        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+        try {
+          const arrayBuffer = await file.arrayBuffer()
+          const pdf = await PDFDocument.load(arrayBuffer)
+          const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
 
-        pages.forEach((page) => {
-          mergedPdf.addPage(page)
+          pages.forEach((page) => {
+            mergedPdf.addPage(page)
 
-          // Add bookmarks if requested
-          if (options.addBookmarks) {
-            try {
-              const outline = mergedPdf.catalog.getOrCreateOutline()
-              outline.addItem(file.name.replace(".pdf", ""), page.ref)
-            } catch (error) {
-              console.warn("Failed to add bookmark:", error)
+            // Add bookmarks if requested
+            if (options.addBookmarks) {
+              try {
+                const outline = mergedPdf.catalog.getOrCreateOutline()
+                outline.addItem(file.name.replace(".pdf", ""), page.ref)
+              } catch (error) {
+                console.warn("Failed to add bookmark:", error)
+              }
             }
-          }
-        })
+          })
+        } catch (error) {
+          console.error(`Failed to process file ${file.name}:`, error)
+          throw new Error(`Failed to process ${file.name}. Please ensure it's a valid PDF.`)
+        }
       }
 
       // Set metadata
@@ -166,7 +201,7 @@ export class PDFProcessor {
       return await mergedPdf.save()
     } catch (error) {
       console.error("PDF merge failed:", error)
-      throw new Error("Failed to merge PDF files. Please ensure all files are valid PDFs.")
+      throw new Error(`Failed to merge PDF files: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -177,39 +212,53 @@ export class PDFProcessor {
       const results: Uint8Array[] = []
       const totalPages = pdf.getPageCount()
 
-      // Validate and filter ranges
-      const validRanges = ranges.filter(range => 
-        range.from >= 1 && 
-        range.to <= totalPages && 
-        range.from <= range.to
-      )
+      // Enhanced validation and filtering of ranges
+      const validRanges = ranges.filter(range => {
+        const isValid = range.from >= 1 && 
+                       range.to <= totalPages && 
+                       range.from <= range.to &&
+                       Number.isInteger(range.from) &&
+                       Number.isInteger(range.to)
+        
+        if (!isValid) {
+          console.warn(`Invalid range: ${range.from}-${range.to}`)
+        }
+        
+        return isValid
+      })
 
       if (validRanges.length === 0) {
-        throw new Error(`Invalid page ranges. Document has ${totalPages} pages.`)
+        throw new Error(`No valid page ranges found. Document has ${totalPages} pages.`)
       }
 
       for (const range of validRanges) {
-        const newPdf = await PDFDocument.create()
-        const startPage = Math.max(0, range.from - 1)
-        const endPage = Math.min(pdf.getPageCount() - 1, range.to - 1)
+        try {
+          const newPdf = await PDFDocument.create()
+          const startPage = Math.max(0, range.from - 1)
+          const endPage = Math.min(pdf.getPageCount() - 1, range.to - 1)
 
-        const pageIndices = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i)
-        const pages = await newPdf.copyPages(pdf, pageIndices)
-        
-        pages.forEach((page) => newPdf.addPage(page))
+          const pageIndices = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i)
+          const pages = await newPdf.copyPages(pdf, pageIndices)
+          
+          pages.forEach((page) => newPdf.addPage(page))
 
-        // Set metadata
-        newPdf.setTitle(`${file.name.replace(".pdf", "")} - Pages ${range.from}-${range.to}`)
-        newPdf.setCreator("PixoraTools PDF Splitter")
-        newPdf.setProducer("PixoraTools")
+          // Set metadata
+          newPdf.setTitle(`${file.name.replace(".pdf", "")} - Pages ${range.from}-${range.to}`)
+          newPdf.setCreator("PixoraTools PDF Splitter")
+          newPdf.setProducer("PixoraTools")
 
-        results.push(await newPdf.save())
+          const pdfBytes = await newPdf.save()
+          results.push(pdfBytes)
+        } catch (error) {
+          console.error(`Failed to process range ${range.from}-${range.to}:`, error)
+          throw new Error(`Failed to extract pages ${range.from}-${range.to}`)
+        }
       }
 
       return results
     } catch (error) {
       console.error("PDF split failed:", error)
-      throw new Error("Failed to split PDF. Please check your page ranges and try again.")
+      throw new Error(`Failed to split PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -235,6 +284,10 @@ export class PDFProcessor {
       try {
         const info = pdf.getDocumentInfo()
         compressedPdf.setTitle(info.Title || file.name.replace(".pdf", ""))
+        if (!options.removeMetadata) {
+          compressedPdf.setAuthor(info.Author || "")
+          compressedPdf.setSubject(info.Subject || "")
+        }
       } catch (error) {
         console.warn("Failed to copy metadata:", error)
       }
@@ -248,7 +301,7 @@ export class PDFProcessor {
       })
     } catch (error) {
       console.error("PDF compression failed:", error)
-      throw new Error("Failed to compress PDF. Please try with a different compression level.")
+      throw new Error(`Failed to compress PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -284,7 +337,7 @@ export class PDFProcessor {
       return await protectedPdf.save()
     } catch (error) {
       console.error("PDF protection failed:", error)
-      throw new Error("Failed to protect PDF. Please check your password and try again.")
+      throw new Error(`Failed to protect PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -298,7 +351,7 @@ export class PDFProcessor {
 
       pages.forEach((page) => {
         const { width, height } = page.getSize()
-        const fontSize = options.quality || 48
+        const fontSize = Math.max(24, Math.min(72, options.quality || 48))
 
         let x: number, y: number, rotation = 0
 
@@ -330,13 +383,15 @@ export class PDFProcessor {
             break
         }
 
+        const opacity = Math.max(0.1, Math.min(1, options.watermarkOpacity || 0.3))
+
         page.drawText(watermarkText, {
           x,
           y,
           size: fontSize,
           font: helveticaFont,
           color: rgb(0.7, 0.7, 0.7),
-          opacity: options.watermarkOpacity || 0.3,
+          opacity,
           rotate: rotation ? { angle: rotation, origin: { x: width / 2, y: height / 2 } } : undefined
         })
       })
@@ -344,7 +399,7 @@ export class PDFProcessor {
       return await pdf.save()
     } catch (error) {
       console.error("PDF watermark failed:", error)
-      throw new Error("Failed to add watermark to PDF.")
+      throw new Error(`Failed to add watermark to PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -360,7 +415,7 @@ export class PDFProcessor {
         const canvas = document.createElement("canvas")
         const ctx = canvas.getContext("2d")!
         
-        const dpi = options.dpi || 150
+        const dpi = Math.max(72, Math.min(600, options.dpi || 150))
         canvas.width = Math.floor(8.5 * dpi) // Letter size width
         canvas.height = Math.floor(11 * dpi) // Letter size height
 
@@ -370,35 +425,50 @@ export class PDFProcessor {
         ctx.strokeStyle = "#e5e7eb"
         ctx.strokeRect(0, 0, canvas.width, canvas.height)
         
-        // Add realistic content
+        // Add realistic content with better quality
         ctx.fillStyle = "#1f2937"
-        ctx.font = `bold ${Math.floor(dpi / 8)}px Arial`
+        ctx.font = `bold ${Math.floor(dpi / 6)}px Arial`
         ctx.textAlign = "left"
         ctx.fillText("Document Content", 50, 80)
         
         ctx.fillStyle = "#374151"
-        ctx.font = `${Math.floor(dpi / 12)}px Arial`
+        ctx.font = `${Math.floor(dpi / 10)}px Arial`
         
-        // Add multiple content blocks
-        for (let block = 0; block < 3; block++) {
-          const startY = 120 + block * 200
-          for (let line = 0; line < 8; line++) {
-            const lineY = startY + line * 20
+        // Add multiple content blocks with better spacing
+        for (let block = 0; block < 4; block++) {
+          const startY = 120 + block * 150
+          for (let line = 0; line < 6; line++) {
+            const lineY = startY + line * 18
             const lineWidth = Math.random() * 200 + 300
-            ctx.fillRect(50, lineY, lineWidth, 12)
+            
+            // Create more realistic text simulation
+            ctx.fillStyle = `rgba(55, 65, 81, ${0.8 + Math.random() * 0.2})`
+            ctx.fillRect(50, lineY, lineWidth, 10)
+            
+            // Add word spacing
+            if (Math.random() > 0.6) {
+              ctx.fillRect(50 + lineWidth + 15, lineY, Math.random() * 100 + 50, 10)
+            }
           }
         }
         
-        // Page number
+        // Page number with better styling
         ctx.fillStyle = "#9ca3af"
-        ctx.font = `${Math.floor(dpi / 10)}px Arial`
+        ctx.font = `${Math.floor(dpi / 8)}px Arial`
         ctx.textAlign = "center"
         ctx.fillText(`${i + 1}`, canvas.width / 2, canvas.height - 50)
 
-        const blob = await new Promise<Blob>((resolve) => {
+        const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
+        const format = options.outputFormat || "png"
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob((blob) => {
-            resolve(blob!)
-          }, `image/${options.outputFormat || "png"}`, (options.quality || 90) / 100)
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error("Failed to create image blob"))
+            }
+          }, `image/${format}`, quality)
         })
 
         images.push(blob)
@@ -407,7 +477,7 @@ export class PDFProcessor {
       return images
     } catch (error) {
       console.error("PDF to images conversion failed:", error)
-      throw new Error("Failed to convert PDF to images.")
+      throw new Error(`Failed to convert PDF to images: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -420,50 +490,66 @@ export class PDFProcessor {
       // Create enhanced text representation
       let wordContent = `Document: ${file.name}\n`
       wordContent += `Converted: ${new Date().toLocaleDateString()}\n`
-      wordContent += `Pages: ${pageCount}\n\n`
-      wordContent += "=".repeat(50) + "\n\n"
+      wordContent += `Pages: ${pageCount}\n`
+      wordContent += `Conversion Mode: ${options.conversionMode || 'no-ocr'}\n\n`
+      wordContent += "=".repeat(60) + "\n\n"
       
       for (let i = 1; i <= pageCount; i++) {
         wordContent += `PAGE ${i}\n`
-        wordContent += "-".repeat(20) + "\n\n"
+        wordContent += "-".repeat(30) + "\n\n"
         
-        // Simulate extracted text content
-        wordContent += `This is the content from page ${i} of the PDF document. `
-        wordContent += `Lorem ipsum dolor sit amet, consectetur adipiscing elit. `
-        wordContent += `Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\n`
+        // Simulate extracted text content with better formatting
+        wordContent += `This is the content from page ${i} of the PDF document.\n\n`
+        
+        if (options.preserveFormatting) {
+          wordContent += `HEADING: Document Section ${i}\n\n`
+          wordContent += `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\n`
+          wordContent += `• Bullet point item 1\n`
+          wordContent += `• Bullet point item 2\n`
+          wordContent += `• Bullet point item 3\n\n`
+        } else {
+          wordContent += `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\n`
+        }
         
         if (options.preserveImages) {
-          wordContent += `[Image placeholder from page ${i}]\n\n`
+          wordContent += `[Image placeholder from page ${i} - Original image would be embedded here]\n\n`
         }
         
         if (i < pageCount) {
-          wordContent += "\n" + "=".repeat(50) + "\n\n"
+          wordContent += "\n" + "=".repeat(60) + "\n\n"
         }
       }
       
       wordContent += `\n\nDocument Information:\n`
       wordContent += `- Original file: ${file.name}\n`
       wordContent += `- Total pages: ${pageCount}\n`
+      wordContent += `- File size: ${(file.size / 1024 / 1024).toFixed(2)} MB\n`
       wordContent += `- Conversion method: ${options.conversionMode || 'no-ocr'}\n`
+      wordContent += `- Language: ${options.language || 'auto-detect'}\n`
       wordContent += `- Processed by: PixoraTools PDF to Word Converter\n`
+      wordContent += `- Conversion date: ${new Date().toISOString()}\n`
       
       const encoder = new TextEncoder()
       return encoder.encode(wordContent)
     } catch (error) {
       console.error("PDF to Word conversion failed:", error)
-      throw new Error("Failed to convert PDF to Word format.")
+      throw new Error(`Failed to convert PDF to Word: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
   static async imagesToPDF(imageFiles: File[], options: PDFProcessingOptions = {}): Promise<Uint8Array> {
     try {
+      if (imageFiles.length === 0) {
+        throw new Error("No image files provided")
+      }
+
       const pdf = await PDFDocument.create()
 
       for (const imageFile of imageFiles) {
-        const arrayBuffer = await imageFile.arrayBuffer()
-        let image
-
         try {
+          const arrayBuffer = await imageFile.arrayBuffer()
+          let image
+
           if (imageFile.type.includes("png")) {
             image = await pdf.embedPng(arrayBuffer)
           } else if (imageFile.type.includes("jpeg") || imageFile.type.includes("jpg")) {
@@ -481,12 +567,18 @@ export class PDFProcessor {
                 ctx.drawImage(img, 0, 0)
                 resolve()
               }
-              img.onerror = reject
+              img.onerror = () => reject(new Error(`Failed to load image: ${imageFile.name}`))
               img.src = URL.createObjectURL(imageFile)
             })
 
-            const jpegBlob = await new Promise<Blob>((resolve) => {
-              canvas.toBlob((blob) => resolve(blob!), "image/jpeg", 0.9)
+            const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to convert image to JPEG"))
+                }
+              }, "image/jpeg", 0.9)
             })
 
             const jpegArrayBuffer = await jpegBlob.arrayBuffer()
@@ -501,13 +593,13 @@ export class PDFProcessor {
           const pageAspectRatio = width / height
 
           let imageWidth, imageHeight
-          const margin = 40
+          const margin = Math.max(20, Math.min(60, options.quality || 40))
 
           if (imageAspectRatio > pageAspectRatio) {
-            imageWidth = width - margin
+            imageWidth = width - margin * 2
             imageHeight = imageWidth / imageAspectRatio
           } else {
-            imageHeight = height - margin
+            imageHeight = height - margin * 2
             imageWidth = imageHeight * imageAspectRatio
           }
 
@@ -523,8 +615,12 @@ export class PDFProcessor {
 
         } catch (error) {
           console.error(`Failed to process image ${imageFile.name}:`, error)
-          continue
+          // Continue with other images instead of failing completely
         }
+      }
+
+      if (pdf.getPageCount() === 0) {
+        throw new Error("No valid images could be processed")
       }
 
       pdf.setTitle("Images to PDF")
@@ -534,7 +630,7 @@ export class PDFProcessor {
       return await pdf.save()
     } catch (error) {
       console.error("Images to PDF conversion failed:", error)
-      throw new Error("Failed to convert images to PDF.")
+      throw new Error(`Failed to convert images to PDF: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 }

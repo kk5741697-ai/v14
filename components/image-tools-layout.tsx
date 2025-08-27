@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import { AdBanner } from "@/components/ads/ad-banner"
 import { 
   Upload, 
   Download, 
@@ -22,17 +21,13 @@ import {
   X,
   ArrowLeft,
   CheckCircle,
-  Undo,
-  Redo,
   RefreshCw,
   ZoomIn,
   ZoomOut,
   Move,
   Crop,
   Maximize2,
-  Minimize2,
   Settings,
-  AlertCircle,
   Info
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
@@ -107,7 +102,6 @@ export function ImageToolsLayout({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
-  const [cropHandles, setCropHandles] = useState<{ [key: string]: { x: number; y: number } }>({})
   const [isResizing, setIsResizing] = useState<string | null>(null)
   const [aspectRatioLocked, setAspectRatioLocked] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -122,11 +116,10 @@ export function ImageToolsLayout({
     setToolOptions(defaultOptions)
   }, [options])
 
-  // Improved auto-save with quota management
+  // Enhanced auto-save with better error handling
   useEffect(() => {
     if (files.length > 0 || Object.keys(toolOptions).length > 0) {
       try {
-        // Create minimal save data to avoid quota issues
         const saveData = {
           fileCount: files.length,
           toolOptions,
@@ -135,34 +128,18 @@ export function ImageToolsLayout({
         
         const saveString = JSON.stringify(saveData)
         
-        // Check if we're approaching localStorage quota (reduced limit)
-        if (saveString.length > 100000) { // 100KB limit
-          console.warn("Auto-save data too large, skipping")
+        if (saveString.length > 50000) { // Reduced limit for better performance
           return
         }
         
         localStorage.setItem(`pixora-${toolType}-autosave`, saveString)
       } catch (error) {
         if (error instanceof Error && error.name === 'QuotaExceededError') {
-          // Clear ALL auto-saves to free up space immediately
           Object.keys(localStorage).forEach(key => {
             if (key.startsWith('pixora-')) {
-              try {
-                localStorage.removeItem(key)
-              } catch {
-                localStorage.removeItem(key)
-              }
+              localStorage.removeItem(key)
             }
           })
-          
-          // Try to save again with minimal data
-          try {
-            const minimalSave = { timestamp: Date.now() }
-            localStorage.setItem(`pixora-${toolType}-autosave`, JSON.stringify(minimalSave))
-          } catch {
-            // If still failing, disable auto-save completely
-            console.warn("Auto-save completely disabled due to storage constraints")
-          }
           
           toast({
             title: "Storage cleared",
@@ -176,7 +153,6 @@ export function ImageToolsLayout({
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
 
-    // Validate file types first
     const invalidFiles = Array.from(uploadedFiles).filter(file => 
       !supportedFormats.includes(file.type)
     )
@@ -189,6 +165,7 @@ export function ImageToolsLayout({
       })
       return
     }
+
     if (singleFileOnly && files.length > 0) {
       setFiles([])
       setProcessedFiles([])
@@ -233,6 +210,7 @@ export function ImageToolsLayout({
       })
       return
     }
+
     setFiles(prev => singleFileOnly ? newFiles : [...prev, ...newFiles])
     
     if (newFiles.length > 0) {
@@ -416,7 +394,7 @@ export function ImageToolsLayout({
     }
   }
 
-  // Pan and zoom functionality
+  // Enhanced pan and zoom functionality
   const handlePanStart = (e: React.MouseEvent) => {
     if (toolType === "crop") return
     setIsPanning(true)
@@ -490,7 +468,7 @@ export function ImageToolsLayout({
     }
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (processedFiles.length === 1) {
       const file = processedFiles[0]
       if (file.blob) {
@@ -504,26 +482,24 @@ export function ImageToolsLayout({
         URL.revokeObjectURL(url)
       }
     } else if (processedFiles.length > 1) {
-      import("jszip").then(({ default: JSZip }) => {
-        const zip = new JSZip()
-        
-        processedFiles.forEach(file => {
-          if (file.blob) {
-            zip.file(file.name, file.blob)
-          }
-        })
-
-        zip.generateAsync({ type: "blob" }).then(zipBlob => {
-          const url = URL.createObjectURL(zipBlob)
-          const link = document.createElement("a")
-          link.href = url
-          link.download = `${toolType}_images.zip`
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
-        })
+      const { default: JSZip } = await import("jszip")
+      const zip = new JSZip()
+      
+      processedFiles.forEach(file => {
+        if (file.blob) {
+          zip.file(file.name, file.blob)
+        }
       })
+
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+      const url = URL.createObjectURL(zipBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `${toolType}_images.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
     }
   }
 
@@ -547,7 +523,7 @@ export function ImageToolsLayout({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-      {/* Left Canvas - Enhanced Image Preview */}
+      {/* Left Canvas - Enhanced with Scrollable Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Enhanced Header */}
         <div className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
@@ -593,56 +569,47 @@ export function ImageToolsLayout({
           </div>
         </div>
 
-        {/* Canvas Content */}
+        {/* Enhanced Scrollable Canvas Content */}
         <div className="flex-1 overflow-hidden">
           {files.length === 0 ? (
-            <div className="h-full flex flex-col">
-              <div className="p-4">
-                <AdBanner position="header" showLabel />
-              </div>
-              
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div 
-                  className="max-w-lg w-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-300 p-16 group"
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all"></div>
-                    <Upload className="relative h-20 w-20 text-blue-500 group-hover:text-blue-600 transition-colors group-hover:scale-110 transform duration-300" />
-                  </div>
-                  <h3 className="text-2xl font-semibold mb-3 text-gray-700 group-hover:text-blue-600 transition-colors">Drop images here</h3>
-                  <p className="text-gray-500 mb-6 text-lg">or click to browse files</p>
-                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 group-hover:scale-105">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Choose Images
-                  </Button>
-                  <div className="mt-6 space-y-2">
-                    <p className="text-sm text-gray-500 font-medium">
-                      Supported formats: {supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Maximum {maxFiles} files • Up to 100MB each
-                    </p>
-                  </div>
-                  {singleFileOnly && (
-                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-700 font-medium flex items-center">
-                        <Crop className="h-4 w-4 mr-2" />
-                        Single file mode for precision editing
-                      </p>
-                    </div>
-                  )}
+            <div className="h-full flex items-center justify-center p-6">
+              <div 
+                className="max-w-lg w-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-300 p-16 group"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all"></div>
+                  <Upload className="relative h-20 w-20 text-blue-500 group-hover:text-blue-600 transition-colors group-hover:scale-110 transform duration-300" />
                 </div>
+                <h3 className="text-2xl font-semibold mb-3 text-gray-700 group-hover:text-blue-600 transition-colors">Drop images here</h3>
+                <p className="text-gray-500 mb-6 text-lg">or click to browse files</p>
+                <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 group-hover:scale-105">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Images
+                </Button>
+                <div className="mt-6 space-y-2">
+                  <p className="text-sm text-gray-500 font-medium">
+                    Supported formats: {supportedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Maximum {maxFiles} files • Up to 100MB each
+                  </p>
+                </div>
+                {singleFileOnly && (
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 font-medium flex items-center">
+                      <Crop className="h-4 w-4 mr-2" />
+                      Single file mode for precision editing
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="h-full flex flex-col">
-              <div className="p-4 border-b">
-                <AdBanner position="inline" showLabel />
-              </div>
-
+              {/* Enhanced Scrollable Canvas with Better UX */}
               <div 
                 ref={canvasRef}
                 className="flex-1 relative overflow-auto bg-gray-100 group"
@@ -650,23 +617,32 @@ export function ImageToolsLayout({
                 onMouseMove={handlePanMove}
                 onMouseUp={handlePanEnd}
                 onMouseLeave={handlePanEnd}
-                style={{ cursor: isPanning ? "grabbing" : toolType === "crop" ? "crosshair" : "grab" }}
+                style={{ 
+                  cursor: isPanning ? "grabbing" : toolType === "crop" ? "crosshair" : "grab",
+                  scrollBehavior: "smooth"
+                }}
               >
-                <div className="min-h-full flex items-center justify-center p-6">
+                <div className="min-h-full flex items-center justify-center p-6" style={{ minWidth: "100%" }}>
                   {currentFile && (
                     <div 
-                      className="relative inline-block transition-transform duration-200 max-w-full max-h-full"
+                      className="relative inline-block transition-transform duration-200"
                       style={{ 
                         transform: `scale(${zoomLevel / 100}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+                        maxWidth: "none",
+                        maxHeight: "none"
                       }}
                     >
                       <img
                         src={currentFile.processedPreview || currentFile.preview}
                         alt={currentFile.name}
-                        className="max-w-full max-h-full object-contain border border-gray-300 rounded-lg shadow-lg bg-white"
+                        className="border border-gray-300 rounded-lg shadow-lg bg-white"
                         style={{ 
                           userSelect: "none",
-                          pointerEvents: toolType === "crop" ? "auto" : "none"
+                          pointerEvents: toolType === "crop" ? "auto" : "none",
+                          maxWidth: "none",
+                          maxHeight: "none",
+                          width: "auto",
+                          height: "auto"
                         }}
                         onMouseDown={handleCropStart}
                         onMouseMove={handleCropMove}
@@ -686,9 +662,9 @@ export function ImageToolsLayout({
                             height: `${cropSelection.height}%`
                           }}
                         >
-                          {/* Enhanced Crop Handles with Better UX */}
+                          {/* Enhanced Crop Handles */}
                           <div 
-                            className="crop-handle absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-nw-resize pointer-events-auto"
+                            className="crop-handle absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-nw-resize pointer-events-auto hover:scale-125 transition-transform"
                             data-handle="nw"
                             onMouseDown={(e) => {
                               e.stopPropagation()
@@ -696,7 +672,7 @@ export function ImageToolsLayout({
                             }}
                           ></div>
                           <div 
-                            className="crop-handle absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-ne-resize pointer-events-auto"
+                            className="crop-handle absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-ne-resize pointer-events-auto hover:scale-125 transition-transform"
                             data-handle="ne"
                             onMouseDown={(e) => {
                               e.stopPropagation()
@@ -704,7 +680,7 @@ export function ImageToolsLayout({
                             }}
                           ></div>
                           <div 
-                            className="crop-handle absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-sw-resize pointer-events-auto"
+                            className="crop-handle absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-sw-resize pointer-events-auto hover:scale-125 transition-transform"
                             data-handle="sw"
                             onMouseDown={(e) => {
                               e.stopPropagation()
@@ -712,7 +688,7 @@ export function ImageToolsLayout({
                             }}
                           ></div>
                           <div 
-                            className="crop-handle absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-se-resize pointer-events-auto"
+                            className="crop-handle absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-se-resize pointer-events-auto hover:scale-125 transition-transform"
                             data-handle="se"
                             onMouseDown={(e) => {
                               e.stopPropagation()
@@ -748,16 +724,15 @@ export function ImageToolsLayout({
                         </Button>
                       </div>
 
-                       {/* Image Info Overlay */}
-                       <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                         <div className="flex items-center space-x-4">
-                           <span>{currentFile.dimensions.width} × {currentFile.dimensions.height}</span>
-                           <span>{formatFileSize(currentFile.size)}</span>
-                           <span>{currentFile.name.split('.').pop()?.toUpperCase()}</span>
-                         </div>
-                       </div>
+                      {/* Image Info Overlay */}
+                      <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center space-x-4">
+                          <span>{currentFile.dimensions.width} × {currentFile.dimensions.height}</span>
+                          <span>{formatFileSize(currentFile.size)}</span>
+                          <span>{currentFile.name.split('.').pop()?.toUpperCase()}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
                   )}
                 </div>
               </div>
@@ -872,6 +847,7 @@ export function ImageToolsLayout({
               )}
             </div>
           )}
+
           {/* Grouped Options */}
           {Object.entries(groupedOptions).map(([section, sectionOptions]) => (
             <div key={section} className="space-y-4">
@@ -884,7 +860,6 @@ export function ImageToolsLayout({
               )}
               
               {sectionOptions.map((option) => {
-                // Check condition if exists
                 if (option.condition && !option.condition(toolOptions)) {
                   return null
                 }
@@ -988,11 +963,6 @@ export function ImageToolsLayout({
               })}
             </div>
           ))}
-
-          {/* Ad Space */}
-          <div className="py-4">
-            <AdBanner position="sidebar" showLabel />
-          </div>
         </div>
 
         {/* Enhanced Sidebar Footer */}
@@ -1009,7 +979,7 @@ export function ImageToolsLayout({
             </div>
           )}
 
-          {/* Error Display */}
+          {/* Ready Status */}
           {!isProcessing && files.length > 0 && processedFiles.length === 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
               <div className="flex items-center space-x-2">
@@ -1036,7 +1006,6 @@ export function ImageToolsLayout({
               </>
             )}
           </Button>
-
 
           {processedFiles.length > 0 && (
             <div className="space-y-2">

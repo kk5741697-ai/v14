@@ -1,4 +1,4 @@
-// Real text processing utilities for formatting, validation, and conversion
+// Enhanced text processing utilities with better validation and error handling
 export interface TextProcessingOptions {
   indent?: number | string
   minify?: boolean
@@ -6,6 +6,7 @@ export interface TextProcessingOptions {
   sortKeys?: boolean
   validateOnly?: boolean
   outputFormat?: string
+  preserveFormatting?: boolean
 }
 
 export interface ProcessingResult {
@@ -21,8 +22,17 @@ export class TextProcessor {
         return { output: "", error: "Input cannot be empty" }
       }
 
-      // Parse JSON to validate
-      const parsed = JSON.parse(input)
+      // Enhanced JSON parsing with better error messages
+      let parsed: any
+      try {
+        parsed = JSON.parse(input)
+      } catch (parseError) {
+        const error = parseError as Error
+        return { 
+          output: "", 
+          error: `Invalid JSON format: ${error.message}` 
+        }
+      }
       
       let output: string
       
@@ -32,7 +42,9 @@ export class TextProcessor {
         const indent = typeof options.indent === "number" ? options.indent : 2
         
         if (options.sortKeys) {
-          output = JSON.stringify(parsed, Object.keys(parsed).sort(), indent)
+          // Enhanced key sorting for nested objects
+          const sortedParsed = this.sortObjectKeys(parsed)
+          output = JSON.stringify(sortedParsed, null, indent)
         } else {
           output = JSON.stringify(parsed, null, indent)
         }
@@ -44,14 +56,15 @@ export class TextProcessor {
         "Objects": this.countObjects(parsed),
         "Arrays": this.countArrays(parsed),
         "Properties": this.countProperties(parsed),
-        "Compression": `${((1 - output.length / input.length) * 100).toFixed(1)}%`
+        "Compression": `${((1 - output.length / input.length) * 100).toFixed(1)}%`,
+        "Depth": this.getObjectDepth(parsed)
       }
 
       return { output, stats }
     } catch (error) {
       return {
         output: "",
-        error: error instanceof Error ? error.message : "Invalid JSON format"
+        error: error instanceof Error ? error.message : "JSON processing failed"
       }
     }
   }
@@ -62,19 +75,25 @@ export class TextProcessor {
         return { output: "", error: "Input cannot be empty" }
       }
 
-      // Parse and validate XML
+      // Enhanced XML parsing and validation
       const parser = new DOMParser()
       const xmlDoc = parser.parseFromString(input, "text/xml")
       const parseError = xmlDoc.querySelector("parsererror")
       
       if (parseError) {
-        return { output: "", error: "Invalid XML format" }
+        return { 
+          output: "", 
+          error: `Invalid XML format: ${parseError.textContent || 'Parse error'}` 
+        }
       }
 
       let output: string
 
       if (options.minify) {
-        output = input.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim()
+        output = input
+          .replace(/>\s+</g, "><")
+          .replace(/\s+/g, " ")
+          .trim()
       } else {
         output = this.formatXML(input, options.indent || 2)
       }
@@ -87,7 +106,8 @@ export class TextProcessor {
         "Input Size": `${input.length} chars`,
         "Output Size": `${output.length} chars`,
         "Elements": (input.match(/<[^\/][^>]*>/g) || []).length,
-        "Attributes": (input.match(/\w+="[^"]*"/g) || []).length
+        "Attributes": (input.match(/\w+="[^"]*"/g) || []).length,
+        "Comments": (input.match(/<!--[\s\S]*?-->/g) || []).length
       }
 
       return { output, stats }
@@ -125,7 +145,8 @@ export class TextProcessor {
         "Input Size": `${input.length} chars`,
         "Output Size": `${output.length} chars`,
         "HTML Tags": (input.match(/<[^>]+>/g) || []).length,
-        "Text Nodes": (input.match(/>[^<]+</g) || []).length
+        "Text Nodes": (input.match(/>[^<]+</g) || []).length,
+        "Comments": (input.match(/<!--[\s\S]*?-->/g) || []).length
       }
 
       return { output, stats }
@@ -138,48 +159,76 @@ export class TextProcessor {
   }
 
   private static formatXML(xml: string, indent: number | string): string {
-    const indentStr = typeof indent === "number" ? " ".repeat(indent) : "\t"
-    let formatted = ""
-    let level = 0
-    
-    xml.split(/>\s*</).forEach((node, index) => {
-      if (index > 0) formatted += ">"
-      if (index < xml.split(/>\s*</).length - 1) formatted += "<"
+    try {
+      const indentStr = typeof indent === "number" ? " ".repeat(Math.max(0, Math.min(8, indent))) : "\t"
+      let formatted = ""
+      let level = 0
       
-      if (node.match(/^\/\w/)) level--
+      const tokens = xml.split(/(<[^>]*>)/).filter(token => token.trim())
       
-      formatted += "\n" + indentStr.repeat(level) + node
+      tokens.forEach(token => {
+        if (token.startsWith("</")) {
+          level = Math.max(0, level - 1)
+          formatted += indentStr.repeat(level) + token + "\n"
+        } else if (token.startsWith("<") && !token.endsWith("/>")) {
+          formatted += indentStr.repeat(level) + token + "\n"
+          if (!token.match(/<\?(xml|XML)/)) {
+            level++
+          }
+        } else if (token.startsWith("<") && token.endsWith("/>")) {
+          formatted += indentStr.repeat(level) + token + "\n"
+        } else if (token.trim()) {
+          formatted += indentStr.repeat(level) + token.trim() + "\n"
+        }
+      })
       
-      if (node.match(/^<?\w[^>]*[^\/]$/)) level++
-    })
-    
-    return formatted.substring(1)
+      return formatted.trim()
+    } catch (error) {
+      throw new Error(`XML formatting failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   private static formatHTML(html: string, indent: number | string): string {
-    const indentStr = typeof indent === "number" ? " ".repeat(indent) : "\t"
-    let formatted = ""
-    let level = 0
-    
-    const tokens = html.split(/(<[^>]*>)/).filter(token => token.trim())
-    
-    tokens.forEach(token => {
-      if (token.startsWith("</")) {
-        level--
-        formatted += indentStr.repeat(level) + token + "\n"
-      } else if (token.startsWith("<") && !token.endsWith("/>")) {
-        formatted += indentStr.repeat(level) + token + "\n"
-        if (!token.match(/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)/i)) {
-          level++
+    try {
+      const indentStr = typeof indent === "number" ? " ".repeat(Math.max(0, Math.min(8, indent))) : "\t"
+      let formatted = ""
+      let level = 0
+      
+      const tokens = html.split(/(<[^>]*>)/).filter(token => token.trim())
+      
+      tokens.forEach(token => {
+        if (token.startsWith("</")) {
+          level = Math.max(0, level - 1)
+          formatted += indentStr.repeat(level) + token + "\n"
+        } else if (token.startsWith("<") && !token.endsWith("/>")) {
+          formatted += indentStr.repeat(level) + token + "\n"
+          if (!token.match(/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)/i)) {
+            level++
+          }
+        } else if (token.startsWith("<") && token.endsWith("/>")) {
+          formatted += indentStr.repeat(level) + token + "\n"
+        } else if (token.trim()) {
+          formatted += indentStr.repeat(level) + token.trim() + "\n"
         }
-      } else if (token.startsWith("<") && token.endsWith("/>")) {
-        formatted += indentStr.repeat(level) + token + "\n"
-      } else if (token.trim()) {
-        formatted += indentStr.repeat(level) + token.trim() + "\n"
-      }
-    })
-    
-    return formatted.trim()
+      })
+      
+      return formatted.trim()
+    } catch (error) {
+      throw new Error(`HTML formatting failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  private static sortObjectKeys(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.sortObjectKeys(item))
+    } else if (obj !== null && typeof obj === "object") {
+      const sorted: any = {}
+      Object.keys(obj).sort().forEach(key => {
+        sorted[key] = this.sortObjectKeys(obj[key])
+      })
+      return sorted
+    }
+    return obj
   }
 
   private static countObjects(obj: any): number {
@@ -225,5 +274,24 @@ export class TextProcessor {
       })
     }
     return count
+  }
+
+  private static getObjectDepth(obj: any): number {
+    if (typeof obj !== "object" || obj === null) {
+      return 0
+    }
+
+    let maxDepth = 0
+    if (Array.isArray(obj)) {
+      obj.forEach(item => {
+        maxDepth = Math.max(maxDepth, this.getObjectDepth(item))
+      })
+    } else {
+      Object.values(obj).forEach(value => {
+        maxDepth = Math.max(maxDepth, this.getObjectDepth(value))
+      })
+    }
+
+    return maxDepth + 1
   }
 }

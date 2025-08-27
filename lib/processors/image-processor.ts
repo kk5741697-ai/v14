@@ -1,4 +1,4 @@
-// Real image processing utilities using Canvas API for client-side processing
+// Enhanced image processing utilities with better error handling and quality
 export interface ImageProcessingOptions {
   quality?: number
   width?: number
@@ -30,538 +30,629 @@ export interface ImageProcessingOptions {
 export class ImageProcessor {
   static async resizeImage(file: File, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
-
-      const img = new Image()
-      img.onload = () => {
-        let { width: targetWidth, height: targetHeight } = options
-        const { naturalWidth: originalWidth, naturalHeight: originalHeight } = img
-
-        // Calculate dimensions based on resize mode
-        if (options.maintainAspectRatio && targetWidth && targetHeight) {
-          const aspectRatio = originalWidth / originalHeight
-          if (targetWidth / targetHeight > aspectRatio) {
-            targetWidth = targetHeight * aspectRatio
-          } else {
-            targetHeight = targetWidth / aspectRatio
-          }
-        } else if (targetWidth && !targetHeight) {
-          targetHeight = (targetWidth / originalWidth) * originalHeight
-        } else if (targetHeight && !targetWidth) {
-          targetWidth = (targetHeight / originalHeight) * originalWidth
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
         }
 
-        canvas.width = targetWidth || originalWidth
-        canvas.height = targetHeight || originalHeight
+        const img = new Image()
+        img.onload = () => {
+          try {
+            let { width: targetWidth, height: targetHeight } = options
+            const { naturalWidth: originalWidth, naturalHeight: originalHeight } = img
 
-        // Apply background color if needed
-        if (options.backgroundColor && options.outputFormat !== "png") {
-          ctx.fillStyle = options.backgroundColor
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-        }
-
-        // Apply transformations
-        ctx.save()
-        
-        // Handle flipping
-        let scaleX = 1, scaleY = 1
-        if (options.flipHorizontal) scaleX = -1
-        if (options.flipVertical) scaleY = -1
-        
-        if (scaleX !== 1 || scaleY !== 1) {
-          ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.scale(scaleX, scaleY)
-          ctx.translate(-canvas.width / 2, -canvas.height / 2)
-        }
-
-        // Handle rotation
-        if (options.rotation) {
-          const angle = (options.rotation * Math.PI) / 180
-          ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.rotate(angle)
-          ctx.translate(-canvas.width / 2, -canvas.height / 2)
-        }
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        ctx.restore()
-
-        const quality = (options.quality || 90) / 100
-        const mimeType = `image/${options.outputFormat || "png"}`
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            // Calculate dimensions based on resize mode
+            if (options.maintainAspectRatio && targetWidth && targetHeight) {
+              const aspectRatio = originalWidth / originalHeight
+              if (targetWidth / targetHeight > aspectRatio) {
+                targetWidth = targetHeight * aspectRatio
+              } else {
+                targetHeight = targetWidth / aspectRatio
+              }
+            } else if (targetWidth && !targetHeight) {
+              targetHeight = (targetWidth / originalWidth) * originalHeight
+            } else if (targetHeight && !targetWidth) {
+              targetWidth = (targetHeight / originalHeight) * originalWidth
             }
-          },
-          mimeType,
-          quality,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            canvas.width = targetWidth || originalWidth
+            canvas.height = targetHeight || originalHeight
+
+            // Apply background color if needed
+            if (options.backgroundColor && options.outputFormat !== "png") {
+              ctx.fillStyle = options.backgroundColor
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+
+            // Apply transformations
+            ctx.save()
+            
+            // Handle flipping
+            let scaleX = 1, scaleY = 1
+            if (options.flipHorizontal) scaleX = -1
+            if (options.flipVertical) scaleY = -1
+            
+            if (scaleX !== 1 || scaleY !== 1) {
+              ctx.translate(canvas.width / 2, canvas.height / 2)
+              ctx.scale(scaleX, scaleY)
+              ctx.translate(-canvas.width / 2, -canvas.height / 2)
+            }
+
+            // Handle rotation
+            if (options.rotation) {
+              const angle = (options.rotation * Math.PI) / 180
+              ctx.translate(canvas.width / 2, canvas.height / 2)
+              ctx.rotate(angle)
+              ctx.translate(-canvas.width / 2, -canvas.height / 2)
+            }
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            ctx.restore()
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
+            const mimeType = `image/${options.outputFormat || "png"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Image processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image resize failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 
   static async compressImage(file: File, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
-
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
-
-        // Apply compression level adjustments
-        let quality = options.quality || 80
-        switch (options.compressionLevel) {
-          case "low":
-            quality = Math.max(quality, 85)
-            break
-          case "medium":
-            quality = Math.min(Math.max(quality, 60), 85)
-            break
-          case "high":
-            quality = Math.min(Math.max(quality, 40), 70)
-            break
-          case "maximum":
-            quality = Math.min(quality, 50)
-            break
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
         }
 
-        ctx.drawImage(img, 0, 0)
+        const img = new Image()
+        img.onload = () => {
+          try {
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
 
-        const mimeType = `image/${options.outputFormat || "jpeg"}`
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            // Apply compression level adjustments
+            let quality = options.quality || 80
+            switch (options.compressionLevel) {
+              case "low":
+                quality = Math.max(quality, 85)
+                break
+              case "medium":
+                quality = Math.min(Math.max(quality, 60), 85)
+                break
+              case "high":
+                quality = Math.min(Math.max(quality, 40), 70)
+                break
+              case "maximum":
+                quality = Math.min(quality, 50)
+                break
             }
-          },
-          mimeType,
-          quality / 100,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            ctx.drawImage(img, 0, 0)
+
+            const finalQuality = Math.max(0.1, Math.min(1, quality / 100))
+            const mimeType = `image/${options.outputFormat || "jpeg"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create compressed blob"))
+                }
+              },
+              mimeType,
+              finalQuality,
+            )
+          } catch (error) {
+            reject(new Error(`Compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image for compression"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 
   static async cropImage(file: File, cropArea: any, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
-
-      const img = new Image()
-      img.onload = () => {
-        const { x, y, width, height } = cropArea
-        const cropX = (x / 100) * img.naturalWidth
-        const cropY = (y / 100) * img.naturalHeight
-        const cropWidth = (width / 100) * img.naturalWidth
-        const cropHeight = (height / 100) * img.naturalHeight
-
-        canvas.width = cropWidth
-        canvas.height = cropHeight
-
-        if (options.backgroundColor) {
-          ctx.fillStyle = options.backgroundColor
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
         }
 
-        ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+        const img = new Image()
+        img.onload = () => {
+          try {
+            const { x, y, width, height } = cropArea
+            const cropX = Math.max(0, (x / 100) * img.naturalWidth)
+            const cropY = Math.max(0, (y / 100) * img.naturalHeight)
+            const cropWidth = Math.min(img.naturalWidth - cropX, (width / 100) * img.naturalWidth)
+            const cropHeight = Math.min(img.naturalHeight - cropY, (height / 100) * img.naturalHeight)
 
-        const quality = (options.quality || 95) / 100
-        const mimeType = `image/${options.outputFormat || "png"}`
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            if (cropWidth <= 0 || cropHeight <= 0) {
+              reject(new Error("Invalid crop area"))
+              return
             }
-          },
-          mimeType,
-          quality,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            canvas.width = cropWidth
+            canvas.height = cropHeight
+
+            if (options.backgroundColor) {
+              ctx.fillStyle = options.backgroundColor
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+
+            ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 95) / 100))
+            const mimeType = `image/${options.outputFormat || "png"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create cropped blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Crop processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image for cropping"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image crop failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 
   static async rotateImage(file: File, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
-
-      const img = new Image()
-      img.onload = () => {
-        const angle = (options.rotation || 0) * (Math.PI / 180)
-        const { naturalWidth: width, naturalHeight: height } = img
-
-        // Calculate new canvas dimensions after rotation
-        const cos = Math.abs(Math.cos(angle))
-        const sin = Math.abs(Math.sin(angle))
-        const newWidth = width * cos + height * sin
-        const newHeight = width * sin + height * cos
-
-        canvas.width = newWidth
-        canvas.height = newHeight
-
-        // Fill background if specified
-        if (options.backgroundColor) {
-          ctx.fillStyle = options.backgroundColor
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
         }
 
-        // Move to center and rotate
-        ctx.translate(newWidth / 2, newHeight / 2)
-        ctx.rotate(angle)
-        ctx.drawImage(img, -width / 2, -height / 2)
+        const img = new Image()
+        img.onload = () => {
+          try {
+            const angle = ((options.rotation || 0) * Math.PI) / 180
+            const { naturalWidth: width, naturalHeight: height } = img
 
-        const quality = (options.quality || 95) / 100
-        const mimeType = `image/${options.outputFormat || "png"}`
+            // Calculate new canvas dimensions after rotation
+            const cos = Math.abs(Math.cos(angle))
+            const sin = Math.abs(Math.sin(angle))
+            const newWidth = width * cos + height * sin
+            const newHeight = width * sin + height * cos
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            canvas.width = newWidth
+            canvas.height = newHeight
+
+            // Fill background if specified
+            if (options.backgroundColor) {
+              ctx.fillStyle = options.backgroundColor
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
             }
-          },
-          mimeType,
-          quality,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            // Move to center and rotate
+            ctx.translate(newWidth / 2, newHeight / 2)
+            ctx.rotate(angle)
+            ctx.drawImage(img, -width / 2, -height / 2)
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 95) / 100))
+            const mimeType = `image/${options.outputFormat || "png"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create rotated blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Rotation processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image for rotation"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image rotation failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 
   static async addWatermark(file: File, watermarkText: string, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx || !watermarkText) {
-        reject(new Error("Canvas not supported or watermark text not specified"))
-        return
-      }
-
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
-
-        ctx.drawImage(img, 0, 0)
-
-        // Calculate font size based on image dimensions
-        const fontSize = Math.min(canvas.width, canvas.height) * 0.05
-        ctx.font = `bold ${fontSize}px Arial`
-        ctx.fillStyle = options.textColor || "#ffffff"
-        ctx.globalAlpha = options.watermarkOpacity || 0.5
-
-        // Position watermark
-        let x = canvas.width / 2
-        let y = canvas.height / 2
-
-        switch (options.position) {
-          case "top-left":
-            x = fontSize
-            y = fontSize * 2
-            ctx.textAlign = "left"
-            break
-          case "top-right":
-            x = canvas.width - fontSize
-            y = fontSize * 2
-            ctx.textAlign = "right"
-            break
-          case "bottom-left":
-            x = fontSize
-            y = canvas.height - fontSize
-            ctx.textAlign = "left"
-            break
-          case "bottom-right":
-            x = canvas.width - fontSize
-            y = canvas.height - fontSize
-            ctx.textAlign = "right"
-            break
-          case "diagonal":
-            ctx.translate(canvas.width / 2, canvas.height / 2)
-            ctx.rotate(-Math.PI / 4)
-            x = 0
-            y = 0
-            ctx.textAlign = "center"
-            break
-          default: // center
-            ctx.textAlign = "center"
-            break
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx || !watermarkText) {
+          reject(new Error("Canvas not supported or watermark text not specified"))
+          return
         }
 
-        ctx.textBaseline = "middle"
+        const img = new Image()
+        img.onload = () => {
+          try {
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
 
-        // Add text shadow if enabled
-        if (options.shadowEnabled) {
-          ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
-          ctx.shadowBlur = 4
-          ctx.shadowOffsetX = 2
-          ctx.shadowOffsetY = 2
-        }
+            ctx.drawImage(img, 0, 0)
 
-        ctx.fillText(watermarkText, x, y)
+            // Calculate font size based on image dimensions
+            const fontSize = Math.min(canvas.width, canvas.height) * 0.05
+            ctx.font = `bold ${fontSize}px Arial`
+            ctx.fillStyle = options.textColor || "#ffffff"
+            ctx.globalAlpha = Math.max(0.1, Math.min(1, options.watermarkOpacity || 0.5))
 
-        const quality = (options.quality || 90) / 100
-        const mimeType = `image/${options.outputFormat || "png"}`
+            // Position watermark
+            let x = canvas.width / 2
+            let y = canvas.height / 2
 
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            switch (options.position) {
+              case "top-left":
+                x = fontSize
+                y = fontSize * 2
+                ctx.textAlign = "left"
+                break
+              case "top-right":
+                x = canvas.width - fontSize
+                y = fontSize * 2
+                ctx.textAlign = "right"
+                break
+              case "bottom-left":
+                x = fontSize
+                y = canvas.height - fontSize
+                ctx.textAlign = "left"
+                break
+              case "bottom-right":
+                x = canvas.width - fontSize
+                y = canvas.height - fontSize
+                ctx.textAlign = "right"
+                break
+              case "diagonal":
+                ctx.translate(canvas.width / 2, canvas.height / 2)
+                ctx.rotate(-Math.PI / 4)
+                x = 0
+                y = 0
+                ctx.textAlign = "center"
+                break
+              default: // center
+                ctx.textAlign = "center"
+                break
             }
-          },
-          mimeType,
-          quality,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            ctx.textBaseline = "middle"
+
+            // Add text shadow if enabled
+            if (options.shadowEnabled) {
+              ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
+              ctx.shadowBlur = 4
+              ctx.shadowOffsetX = 2
+              ctx.shadowOffsetY = 2
+            }
+
+            ctx.fillText(watermarkText, x, y)
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
+            const mimeType = `image/${options.outputFormat || "png"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create watermarked blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Watermark processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image for watermarking"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image watermark failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 
   static async removeBackground(file: File, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
+        }
 
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
+        const img = new Image()
+        img.onload = () => {
+          try {
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
 
-        ctx.drawImage(img, 0, 0)
+            ctx.drawImage(img, 0, 0)
 
-        // Enhanced background removal with edge detection
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        const data = imageData.data
+            // Enhanced background removal with edge detection
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const data = imageData.data
 
-        // Sample corner pixels to determine background color
-        const corners = [
-          [0, 0], // top-left
-          [canvas.width - 1, 0], // top-right
-          [0, canvas.height - 1], // bottom-left
-          [canvas.width - 1, canvas.height - 1], // bottom-right
-        ]
+            // Sample corner pixels to determine background color
+            const corners = [
+              [0, 0], // top-left
+              [canvas.width - 1, 0], // top-right
+              [0, canvas.height - 1], // bottom-left
+              [canvas.width - 1, canvas.height - 1], // bottom-right
+            ]
 
-        const bgColors = corners.map(([x, y]) => {
-          const index = (y * canvas.width + x) * 4
-          return [data[index], data[index + 1], data[index + 2]]
-        })
+            const bgColors = corners.map(([x, y]) => {
+              const index = (y * canvas.width + x) * 4
+              return [data[index], data[index + 1], data[index + 2]]
+            })
 
-        // Use most common corner color as background
-        const bgColor = bgColors[0]
+            // Use most common corner color as background
+            const bgColor = bgColors[0]
 
-        // Enhanced edge detection and background removal
-        const sensitivity = (options.quality || 30) / 100
-        const threshold = 50 * sensitivity
+            // Enhanced edge detection and background removal
+            const sensitivity = Math.max(0.1, Math.min(1, (options.quality || 30) / 100))
+            const threshold = 50 * sensitivity
 
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i]
-          const g = data[i + 1]
-          const b = data[i + 2]
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i]
+              const g = data[i + 1]
+              const b = data[i + 2]
 
-          const colorDistance = Math.sqrt(
-            Math.pow(r - bgColor[0], 2) + Math.pow(g - bgColor[1], 2) + Math.pow(b - bgColor[2], 2),
-          )
+              const colorDistance = Math.sqrt(
+                Math.pow(r - bgColor[0], 2) + Math.pow(g - bgColor[1], 2) + Math.pow(b - bgColor[2], 2),
+              )
 
-          if (colorDistance < threshold) {
-            data[i + 3] = 0 // Make transparent
-          } else {
-            // Apply edge smoothing for better results
-            const alpha = Math.min(255, Math.max(0, (colorDistance - threshold) * 5))
-            data[i + 3] = alpha
+              if (colorDistance < threshold) {
+                data[i + 3] = 0 // Make transparent
+              } else {
+                // Apply edge smoothing for better results
+                const alpha = Math.min(255, Math.max(0, (colorDistance - threshold) * 5))
+                data[i + 3] = alpha
+              }
+            }
+
+            ctx.putImageData(imageData, 0, 0)
+
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob)
+              } else {
+                reject(new Error("Failed to create background-removed blob"))
+              }
+            }, "image/png") // Always use PNG for transparency
+          } catch (error) {
+            reject(new Error(`Background removal failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
           }
         }
 
-        ctx.putImageData(imageData, 0, 0)
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob)
-          } else {
-            reject(new Error("Failed to create blob"))
-          }
-        }, "image/png") // Always use PNG for transparency
+        img.onerror = () => reject(new Error("Failed to load image for background removal"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Background removal failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
       }
-
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
     })
   }
 
   static async convertFormat(file: File, outputFormat: "jpeg" | "png" | "webp", options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        reject(new Error("Canvas not supported"))
-        return
-      }
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
+        }
 
-      const img = new Image()
-      img.onload = () => {
-        let { width: targetWidth, height: targetHeight } = options
-        const { naturalWidth: originalWidth, naturalHeight: originalHeight } = img
+        const img = new Image()
+        img.onload = () => {
+          try {
+            let { width: targetWidth, height: targetHeight } = options
+            const { naturalWidth: originalWidth, naturalHeight: originalHeight } = img
 
-        // Handle resizing during conversion
-        if (targetWidth && targetHeight) {
-          if (options.maintainAspectRatio) {
-            const aspectRatio = originalWidth / originalHeight
-            if (targetWidth / targetHeight > aspectRatio) {
-              targetWidth = targetHeight * aspectRatio
+            // Handle resizing during conversion
+            if (targetWidth && targetHeight) {
+              if (options.maintainAspectRatio) {
+                const aspectRatio = originalWidth / originalHeight
+                if (targetWidth / targetHeight > aspectRatio) {
+                  targetWidth = targetHeight * aspectRatio
+                } else {
+                  targetHeight = targetWidth / aspectRatio
+                }
+              }
             } else {
-              targetHeight = targetWidth / aspectRatio
+              targetWidth = originalWidth
+              targetHeight = originalHeight
             }
+
+            canvas.width = targetWidth
+            canvas.height = targetHeight
+
+            // Add background color for formats that don't support transparency
+            if (options.backgroundColor && outputFormat !== "png") {
+              ctx.fillStyle = options.backgroundColor
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+            }
+
+            // Apply transformations
+            ctx.save()
+            
+            // Handle flipping
+            let scaleX = 1, scaleY = 1
+            if (options.flipHorizontal) scaleX = -1
+            if (options.flipVertical) scaleY = -1
+            
+            if (scaleX !== 1 || scaleY !== 1) {
+              ctx.translate(canvas.width / 2, canvas.height / 2)
+              ctx.scale(scaleX, scaleY)
+              ctx.translate(-canvas.width / 2, -canvas.height / 2)
+            }
+
+            // Handle rotation
+            if (options.rotation) {
+              const angle = (options.rotation * Math.PI) / 180
+              ctx.translate(canvas.width / 2, canvas.height / 2)
+              ctx.rotate(angle)
+              ctx.translate(-canvas.width / 2, -canvas.height / 2)
+            }
+
+            // Apply filters if specified
+            if (options.filters) {
+              const filters = []
+              const { brightness, contrast, saturation, blur, sepia, grayscale } = options.filters
+
+              if (brightness !== undefined && brightness !== 100) filters.push(`brightness(${brightness}%)`)
+              if (contrast !== undefined && contrast !== 100) filters.push(`contrast(${contrast}%)`)
+              if (saturation !== undefined && saturation !== 100) filters.push(`saturate(${saturation}%)`)
+              if (blur !== undefined && blur > 0) filters.push(`blur(${blur}px)`)
+              if (sepia) filters.push("sepia(100%)")
+              if (grayscale) filters.push("grayscale(100%)")
+
+              if (filters.length > 0) {
+                ctx.filter = filters.join(" ")
+              }
+            }
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            ctx.restore()
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
+            const mimeType = `image/${outputFormat}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create converted blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Format conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
           }
-        } else {
-          targetWidth = originalWidth
-          targetHeight = originalHeight
         }
 
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-
-        // Add background color for formats that don't support transparency
-        if (options.backgroundColor && outputFormat !== "png") {
-          ctx.fillStyle = options.backgroundColor
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-        }
-
-        // Apply transformations
-        ctx.save()
-        
-        // Handle flipping
-        let scaleX = 1, scaleY = 1
-        if (options.flipHorizontal) scaleX = -1
-        if (options.flipVertical) scaleY = -1
-        
-        if (scaleX !== 1 || scaleY !== 1) {
-          ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.scale(scaleX, scaleY)
-          ctx.translate(-canvas.width / 2, -canvas.height / 2)
-        }
-
-        // Handle rotation
-        if (options.rotation) {
-          const angle = (options.rotation * Math.PI) / 180
-          ctx.translate(canvas.width / 2, canvas.height / 2)
-          ctx.rotate(angle)
-          ctx.translate(-canvas.width / 2, -canvas.height / 2)
-        }
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        ctx.restore()
-
-        const quality = (options.quality || 90) / 100
-        const mimeType = `image/${outputFormat}`
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
-            }
-          },
-          mimeType,
-          quality,
-        )
+        img.onerror = () => reject(new Error("Failed to load image for format conversion"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image format conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
       }
-
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
     })
   }
 
   static async applyFilters(file: File, options: ImageProcessingOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-      if (!ctx || !options.filters) {
-        reject(new Error("Canvas not supported or no filters specified"))
-        return
-      }
+      try {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx || !options.filters) {
+          reject(new Error("Canvas not supported or no filters specified"))
+          return
+        }
 
-      const img = new Image()
-      img.onload = () => {
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
+        const img = new Image()
+        img.onload = () => {
+          try {
+            canvas.width = img.naturalWidth
+            canvas.height = img.naturalHeight
 
-        // Apply CSS filters
-        const filters = []
-        const { brightness, contrast, saturation, blur, sepia, grayscale } = options.filters
+            // Apply CSS filters
+            const filters = []
+            const { brightness, contrast, saturation, blur, sepia, grayscale } = options.filters
 
-        if (brightness !== undefined) filters.push(`brightness(${brightness}%)`)
-        if (contrast !== undefined) filters.push(`contrast(${contrast}%)`)
-        if (saturation !== undefined) filters.push(`saturate(${saturation}%)`)
-        if (blur !== undefined) filters.push(`blur(${blur}px)`)
-        if (sepia) filters.push("sepia(100%)")
-        if (grayscale) filters.push("grayscale(100%)")
+            if (brightness !== undefined && brightness !== 100) filters.push(`brightness(${brightness}%)`)
+            if (contrast !== undefined && contrast !== 100) filters.push(`contrast(${contrast}%)`)
+            if (saturation !== undefined && saturation !== 100) filters.push(`saturate(${saturation}%)`)
+            if (blur !== undefined && blur > 0) filters.push(`blur(${blur}px)`)
+            if (sepia) filters.push("sepia(100%)")
+            if (grayscale) filters.push("grayscale(100%)")
 
-        ctx.filter = filters.join(" ")
-        ctx.drawImage(img, 0, 0)
-
-        const quality = (options.quality || 90) / 100
-        const mimeType = `image/${options.outputFormat || "png"}`
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob)
-            } else {
-              reject(new Error("Failed to create blob"))
+            if (filters.length > 0) {
+              ctx.filter = filters.join(" ")
             }
-          },
-          mimeType,
-          quality,
-        )
-      }
 
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+            ctx.drawImage(img, 0, 0)
+
+            const quality = Math.max(0.1, Math.min(1, (options.quality || 90) / 100))
+            const mimeType = `image/${options.outputFormat || "png"}`
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) {
+                  resolve(blob)
+                } else {
+                  reject(new Error("Failed to create filtered blob"))
+                }
+              },
+              mimeType,
+              quality,
+            )
+          } catch (error) {
+            reject(new Error(`Filter processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+          }
+        }
+
+        img.onerror = () => reject(new Error("Failed to load image for filtering"))
+        img.src = URL.createObjectURL(file)
+      } catch (error) {
+        reject(new Error(`Image filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+      }
     })
   }
 }

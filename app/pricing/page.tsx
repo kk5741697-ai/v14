@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Check, Star, Zap, Shield, Users, Crown } from "lucide-react"
-import { SUBSCRIPTION_PLANS } from "@/lib/stripe/config"
+import { SUBSCRIPTION_PLANS } from "@/lib/stripe/plans"
 import Link from "next/link"
 
 const planIcons = {

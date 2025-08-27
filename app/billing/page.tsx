@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { CreditCard, Calendar, TrendingUp, Settings } from "lucide-react"
-import { SUBSCRIPTION_PLANS } from "@/lib/stripe/config"
+import { SUBSCRIPTION_PLANS } from "@/lib/stripe/plans"
 
 // Mock user subscription data - in real app this would come from API
 const mockSubscription = {

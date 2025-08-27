@@ -1,4 +1,5 @@
-import { stripe, SUBSCRIPTION_PLANS, type PlanId } from "./config"
+import { stripe } from "./config"
+import { SUBSCRIPTION_PLANS, type PlanId } from "./plans"
 import { prisma } from "@/lib/prisma"
 import type Stripe from "stripe"
 

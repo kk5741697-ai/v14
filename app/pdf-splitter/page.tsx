@@ -41,10 +41,14 @@ async function splitPDF(files: any[], options: any) {
     // Handle different split modes
     let ranges: Array<{ from: number; to: number }> = []
     
-    if (options.extractMode === "pages") {
+    if (options.extractMode === "pages" && options.selectedPages) {
       // Split into individual pages based on selected pages
-      const selectedPages = file.pages.filter((p: any) => p.selected).map((p: any) => p.pageNumber)
-      ranges = selectedPages.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
+      const selectedPageNumbers = options.selectedPages.map((pageKey: string) => {
+        const parts = pageKey.split('-')
+        return parseInt(parts[parts.length - 1])
+      }).filter((num: number) => !isNaN(num))
+      
+      ranges = selectedPageNumbers.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
     } else if (options.extractMode === "range") {
       ranges = options.pageRanges || [{ from: 1, to: file.pageCount }]
     } else if (options.extractMode === "size") {
@@ -56,6 +60,7 @@ async function splitPDF(files: any[], options: any) {
       }))
     } else {
       // Extract all pages as individual files
+      ranges = selectedPages.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
       ranges = Array.from({ length: file.pageCount }, (_, i) => ({ from: i + 1, to: i + 1 }))
     }
 

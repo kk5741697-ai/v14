@@ -30,7 +30,8 @@ import {
   Move,
   Crop,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Settings
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -100,8 +101,6 @@ export function ImageToolsLayout({
   const [cropSelection, setCropSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
-  const [history, setHistory] = useState<Array<{ files: ImageFile[]; options: any }>>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
   const [zoomLevel, setZoomLevel] = useState(100)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
@@ -118,33 +117,52 @@ export function ImageToolsLayout({
     setToolOptions(defaultOptions)
   }, [options])
 
-  // Auto-save to localStorage
+  // Improved auto-save with quota management
   useEffect(() => {
     if (files.length > 0 || Object.keys(toolOptions).length > 0) {
-      const saveData = {
-        files: files.map(f => ({ ...f, file: null, originalFile: null })), // Don't save File objects
-        toolOptions,
-        timestamp: Date.now()
-      }
-      localStorage.setItem(`pixora-${toolType}-autosave`, JSON.stringify(saveData))
-    }
-  }, [files, toolOptions, toolType])
-
-  // Load auto-save on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(`pixora-${toolType}-autosave`)
-    if (saved) {
       try {
-        const saveData = JSON.parse(saved)
-        // Only restore if less than 1 hour old
-        if (Date.now() - saveData.timestamp < 3600000) {
-          setToolOptions(saveData.toolOptions || {})
+        // Create minimal save data to avoid quota issues
+        const saveData = {
+          fileCount: files.length,
+          toolOptions,
+          timestamp: Date.now()
         }
+        
+        const saveString = JSON.stringify(saveData)
+        
+        // Check if we're approaching localStorage quota
+        if (saveString.length > 500000) { // 500KB limit
+          console.warn("Auto-save data too large, skipping")
+          return
+        }
+        
+        localStorage.setItem(`pixora-${toolType}-autosave`, saveString)
       } catch (error) {
-        console.warn("Failed to restore auto-save:", error)
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+          // Clear old auto-saves to free up space
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('pixora-') && key.endsWith('-autosave')) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key) || '{}')
+                // Remove saves older than 1 hour
+                if (Date.now() - (data.timestamp || 0) > 3600000) {
+                  localStorage.removeItem(key)
+                }
+              } catch {
+                localStorage.removeItem(key)
+              }
+            }
+          })
+          
+          toast({
+            title: "Storage limit reached",
+            description: "Auto-save disabled to prevent storage issues",
+            variant: "destructive"
+          })
+        }
       }
     }
-  }, [toolType])
+  }, [files.length, toolOptions, toolType])
 
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
@@ -190,8 +208,6 @@ export function ImageToolsLayout({
     if (newFiles.length > 0) {
       setSelectedFile(newFiles[0].id)
     }
-
-    saveToHistory()
   }
 
   const createImagePreview = (file: File): Promise<string> => {
@@ -228,35 +244,6 @@ export function ImageToolsLayout({
       const remainingFiles = files.filter(f => f.id !== fileId)
       setSelectedFile(remainingFiles.length > 0 ? remainingFiles[0].id : null)
     }
-    saveToHistory()
-  }
-
-  const saveToHistory = () => {
-    const newHistoryEntry = { files: [...files], options: { ...toolOptions } }
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1)
-      newHistory.push(newHistoryEntry)
-      return newHistory.slice(-10)
-    })
-    setHistoryIndex(prev => Math.min(prev + 1, 9))
-  }
-
-  const undo = () => {
-    if (historyIndex > 0) {
-      const prevState = history[historyIndex - 1]
-      setFiles(prevState.files)
-      setToolOptions(prevState.options)
-      setHistoryIndex(prev => prev - 1)
-    }
-  }
-
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const nextState = history[historyIndex + 1]
-      setFiles(nextState.files)
-      setToolOptions(nextState.options)
-      setHistoryIndex(prev => prev + 1)
-    }
   }
 
   const resetTool = () => {
@@ -264,8 +251,6 @@ export function ImageToolsLayout({
     setProcessedFiles([])
     setSelectedFile(null)
     setCropSelection(null)
-    setHistory([])
-    setHistoryIndex(-1)
     setZoomLevel(100)
     setPanOffset({ x: 0, y: 0 })
     
@@ -275,7 +260,11 @@ export function ImageToolsLayout({
     })
     setToolOptions(defaultOptions)
     
-    localStorage.removeItem(`pixora-${toolType}-autosave`)
+    try {
+      localStorage.removeItem(`pixora-${toolType}-autosave`)
+    } catch (error) {
+      console.warn("Failed to clear auto-save:", error)
+    }
     
     toast({
       title: "Tool reset",
@@ -283,7 +272,7 @@ export function ImageToolsLayout({
     })
   }
 
-  // Enhanced crop functionality
+  // Enhanced crop functionality with precise pixel coordinates
   const handleCropStart = (e: React.MouseEvent<HTMLImageElement>) => {
     if (toolType !== "crop") return
     
@@ -323,7 +312,6 @@ export function ImageToolsLayout({
           ? { ...file, cropArea: cropSelection }
           : file
       ))
-      saveToHistory()
     }
   }
 
@@ -483,22 +471,6 @@ export function ImageToolsLayout({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={undo}
-              disabled={historyIndex <= 0}
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
               onClick={resetTool}
             >
               <RefreshCw className="h-4 w-4" />
@@ -561,7 +533,7 @@ export function ImageToolsLayout({
 
               <div 
                 ref={canvasRef}
-                className="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-gray-100"
+                className="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-gray-100 group"
                 onMouseDown={handlePanStart}
                 onMouseMove={handlePanMove}
                 onMouseUp={handlePanEnd}
@@ -707,7 +679,6 @@ export function ImageToolsLayout({
                     size="sm"
                     onClick={() => {
                       setToolOptions(prev => ({ ...prev, ...preset.values }))
-                      saveToHistory()
                     }}
                     className="text-xs h-8"
                   >
@@ -744,7 +715,6 @@ export function ImageToolsLayout({
                         value={toolOptions[option.key]?.toString()}
                         onValueChange={(value) => {
                           setToolOptions(prev => ({ ...prev, [option.key]: value }))
-                          saveToHistory()
                         }}
                       >
                         <SelectTrigger>
@@ -765,7 +735,6 @@ export function ImageToolsLayout({
                         <Slider
                           value={[toolOptions[option.key] || option.defaultValue]}
                           onValueChange={([value]) => setToolOptions(prev => ({ ...prev, [option.key]: value }))}
-                          onValueCommit={() => saveToHistory()}
                           min={option.min}
                           max={option.max}
                           step={option.step}
@@ -785,7 +754,6 @@ export function ImageToolsLayout({
                         onChange={(e) => {
                           setToolOptions(prev => ({ ...prev, [option.key]: parseInt(e.target.value) || option.defaultValue }))
                         }}
-                        onBlur={saveToHistory}
                         min={option.min}
                         max={option.max}
                       />
@@ -797,7 +765,6 @@ export function ImageToolsLayout({
                           checked={toolOptions[option.key] || false}
                           onCheckedChange={(checked) => {
                             setToolOptions(prev => ({ ...prev, [option.key]: checked }))
-                            saveToHistory()
                           }}
                         />
                         <span className="text-sm">{option.label}</span>
@@ -811,7 +778,6 @@ export function ImageToolsLayout({
                           value={toolOptions[option.key] || option.defaultValue}
                           onChange={(e) => {
                             setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
-                            saveToHistory()
                           }}
                           className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
                         />
@@ -820,7 +786,6 @@ export function ImageToolsLayout({
                           onChange={(e) => {
                             setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
                           }}
-                          onBlur={saveToHistory}
                           className="flex-1"
                         />
                       </div>
@@ -832,7 +797,6 @@ export function ImageToolsLayout({
                         onChange={(e) => {
                           setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
                         }}
-                        onBlur={saveToHistory}
                         placeholder={option.label}
                       />
                     )}

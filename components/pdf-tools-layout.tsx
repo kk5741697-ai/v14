@@ -88,8 +88,6 @@ export function PDFToolsLayout({
   const [toolOptions, setToolOptions] = useState<Record<string, any>>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
-  const [history, setHistory] = useState<Array<{ files: PDFFile[]; options: any }>>([])
-  const [historyIndex, setHistoryIndex] = useState(-1)
   const [extractMode, setExtractMode] = useState<"all" | "pages" | "range" | "size">("all")
   const [showPageNumbers, setShowPageNumbers] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -102,18 +100,43 @@ export function PDFToolsLayout({
     setToolOptions(defaultOptions)
   }, [options])
 
-  // Auto-save functionality
+  // Improved auto-save with quota management
   useEffect(() => {
     if (files.length > 0 || Object.keys(toolOptions).length > 0) {
-      const saveData = {
-        files: files.map(f => ({ ...f, file: null, originalFile: null })),
-        toolOptions,
-        extractMode,
-        timestamp: Date.now()
+      try {
+        const saveData = {
+          fileCount: files.length,
+          toolOptions,
+          extractMode,
+          timestamp: Date.now()
+        }
+        
+        const saveString = JSON.stringify(saveData)
+        
+        if (saveString.length > 500000) {
+          console.warn("Auto-save data too large, skipping")
+          return
+        }
+        
+        localStorage.setItem(`pixora-${toolType}-autosave`, saveString)
+      } catch (error) {
+        if (error instanceof Error && error.name === 'QuotaExceededError') {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('pixora-') && key.endsWith('-autosave')) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key) || '{}')
+                if (Date.now() - (data.timestamp || 0) > 3600000) {
+                  localStorage.removeItem(key)
+                }
+              } catch {
+                localStorage.removeItem(key)
+              }
+            }
+          })
+        }
       }
-      localStorage.setItem(`pixora-${toolType}-autosave`, JSON.stringify(saveData))
     }
-  }, [files, toolOptions, extractMode, toolType])
+  }, [files.length, toolOptions, extractMode, toolType])
 
   const handleFileUpload = async (uploadedFiles: FileList | null) => {
     if (!uploadedFiles) return
@@ -125,8 +148,7 @@ export function PDFToolsLayout({
       if (file.type !== "application/pdf") continue
 
       try {
-        const pageCount = Math.floor(Math.random() * 20) + 1
-        const pages = await this.generatePDFThumbnails(file, pageCount)
+        const { pageCount, pages } = await this.generateRealPDFThumbnails(file)
         
         const pdfFile: PDFFile = {
           id: `${file.name}-${Date.now()}-${i}`,
@@ -149,72 +171,134 @@ export function PDFToolsLayout({
     }
 
     setFiles(prev => [...prev, ...newFiles])
-    saveToHistory()
   }
 
-  const generatePDFThumbnails = async (file: File, pageCount: number) => {
+  const generateRealPDFThumbnails = async (file: File) => {
+    // Use PDF.js to generate real thumbnails
+    try {
+      const pdfjsLib = await import('pdfjs-dist')
+      
+      // Set worker source
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+      
+      const arrayBuffer = await file.arrayBuffer()
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      const pageCount = pdf.numPages
+      const pages = []
+
+      for (let i = 1; i <= Math.min(pageCount, 20); i++) { // Limit to 20 pages for performance
+        try {
+          const page = await pdf.getPage(i)
+          const viewport = page.getViewport({ scale: 0.5 })
+          
+          const canvas = document.createElement("canvas")
+          const context = canvas.getContext("2d")!
+          canvas.height = viewport.height
+          canvas.width = viewport.width
+
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise
+
+          pages.push({
+            pageNumber: i,
+            thumbnail: canvas.toDataURL("image/png", 0.8),
+            selected: extractMode === "all" || toolType !== "split",
+            width: viewport.width,
+            height: viewport.height
+          })
+        } catch (error) {
+          console.error(`Failed to render page ${i}:`, error)
+          // Fallback to placeholder
+          pages.push({
+            pageNumber: i,
+            thumbnail: this.createPlaceholderThumbnail(i, pageCount),
+            selected: extractMode === "all" || toolType !== "split",
+            width: 200,
+            height: 280
+          })
+        }
+      }
+
+      return { pageCount, pages }
+    } catch (error) {
+      console.error("PDF.js failed, using fallback:", error)
+      return this.generateFallbackThumbnails(file)
+    }
+  }
+
+  const generateFallbackThumbnails = async (file: File) => {
+    // Estimate page count based on file size (rough approximation)
+    const estimatedPageCount = Math.max(1, Math.min(50, Math.floor(file.size / 50000)))
     const pages = []
     
-    for (let i = 0; i < pageCount; i++) {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")!
-      canvas.width = 200
-      canvas.height = 280
-
-      // Enhanced PDF page thumbnail with realistic content
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // Border
-      ctx.strokeStyle = "#e2e8f0"
-      ctx.lineWidth = 1
-      ctx.strokeRect(0, 0, canvas.width, canvas.height)
-      
-      // Header
-      ctx.fillStyle = "#1f2937"
-      ctx.font = "bold 12px system-ui"
-      ctx.textAlign = "left"
-      ctx.fillText("Document Title", 15, 25)
-      
-      // Content simulation
-      ctx.fillStyle = "#374151"
-      ctx.font = "10px system-ui"
-      const lines = [
-        "Lorem ipsum dolor sit amet, consectetur",
-        "adipiscing elit. Sed do eiusmod tempor",
-        "incididunt ut labore et dolore magna",
-        "aliqua. Ut enim ad minim veniam,",
-        "quis nostrud exercitation ullamco",
-        "laboris nisi ut aliquip ex ea commodo"
-      ]
-      
-      lines.forEach((line, lineIndex) => {
-        if (lineIndex < 6) {
-          ctx.fillText(line.substring(0, 28), 15, 45 + lineIndex * 12)
-        }
-      })
-      
-      // Visual elements
-      ctx.fillStyle = "#e5e7eb"
-      ctx.fillRect(15, 150, canvas.width - 30, 1)
-      ctx.fillRect(15, 170, canvas.width - 50, 1)
-      
-      // Page number
-      ctx.fillStyle = "#9ca3af"
-      ctx.font = "8px system-ui"
-      ctx.textAlign = "center"
-      ctx.fillText(`Page ${i + 1} of ${pageCount}`, canvas.width / 2, canvas.height - 15)
-
+    for (let i = 0; i < estimatedPageCount; i++) {
       pages.push({
         pageNumber: i + 1,
-        thumbnail: canvas.toDataURL("image/png", 0.8),
+        thumbnail: this.createPlaceholderThumbnail(i + 1, estimatedPageCount),
         selected: extractMode === "all" || toolType !== "split",
         width: 200,
         height: 280
       })
     }
 
-    return pages
+    return { pageCount: estimatedPageCount, pages }
+  }
+
+  const createPlaceholderThumbnail = (pageNumber: number, totalPages: number) => {
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")!
+    canvas.width = 200
+    canvas.height = 280
+
+    // Enhanced PDF page thumbnail with realistic content
+    ctx.fillStyle = "#ffffff"
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Border
+    ctx.strokeStyle = "#e2e8f0"
+    ctx.lineWidth = 1
+    ctx.strokeRect(0, 0, canvas.width, canvas.height)
+    
+    // Header
+    ctx.fillStyle = "#1f2937"
+    ctx.font = "bold 12px system-ui"
+    ctx.textAlign = "left"
+    ctx.fillText("Document Title", 15, 25)
+    
+    // Content simulation with more realistic layout
+    ctx.fillStyle = "#374151"
+    ctx.font = "10px system-ui"
+    const lines = [
+      "Lorem ipsum dolor sit amet, consectetur",
+      "adipiscing elit. Sed do eiusmod tempor",
+      "incididunt ut labore et dolore magna",
+      "aliqua. Ut enim ad minim veniam,",
+      "quis nostrud exercitation ullamco",
+      "laboris nisi ut aliquip ex ea commodo",
+      "consequat. Duis aute irure dolor in",
+      "reprehenderit in voluptate velit esse"
+    ]
+    
+    lines.forEach((line, lineIndex) => {
+      if (lineIndex < 8) {
+        ctx.fillText(line.substring(0, 28), 15, 45 + lineIndex * 12)
+      }
+    })
+    
+    // Visual elements
+    ctx.fillStyle = "#e5e7eb"
+    ctx.fillRect(15, 150, canvas.width - 30, 1)
+    ctx.fillRect(15, 170, canvas.width - 50, 1)
+    
+    // Page number
+    ctx.fillStyle = "#9ca3af"
+    ctx.font = "8px system-ui"
+    ctx.textAlign = "center"
+    ctx.fillText(`Page ${pageNumber} of ${totalPages}`, canvas.width / 2, canvas.height - 15)
+
+    return canvas.toDataURL("image/png", 0.8)
   }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -228,43 +312,12 @@ export function PDFToolsLayout({
 
   const removeFile = (fileId: string) => {
     setFiles(prev => prev.filter(f => f.id !== fileId))
-    saveToHistory()
-  }
-
-  const saveToHistory = () => {
-    const newHistoryEntry = { files: [...files], options: { ...toolOptions } }
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1)
-      newHistory.push(newHistoryEntry)
-      return newHistory.slice(-10)
-    })
-    setHistoryIndex(prev => Math.min(prev + 1, 9))
-  }
-
-  const undo = () => {
-    if (historyIndex > 0) {
-      const prevState = history[historyIndex - 1]
-      setFiles(prevState.files)
-      setToolOptions(prevState.options)
-      setHistoryIndex(prev => prev - 1)
-    }
-  }
-
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const nextState = history[historyIndex + 1]
-      setFiles(nextState.files)
-      setToolOptions(nextState.options)
-      setHistoryIndex(prev => prev + 1)
-    }
   }
 
   const resetTool = () => {
     setFiles([])
     setDownloadUrl(null)
     setSelectedPages(new Set())
-    setHistory([])
-    setHistoryIndex(-1)
     setExtractMode("all")
     
     const defaultOptions: Record<string, any> = {}
@@ -273,7 +326,11 @@ export function PDFToolsLayout({
     })
     setToolOptions(defaultOptions)
     
-    localStorage.removeItem(`pixora-${toolType}-autosave`)
+    try {
+      localStorage.removeItem(`pixora-${toolType}-autosave`)
+    } catch (error) {
+      console.warn("Failed to clear auto-save:", error)
+    }
   }
 
   const togglePageSelection = (fileId: string, pageNumber: number) => {
@@ -400,7 +457,6 @@ export function PDFToolsLayout({
       newFiles.splice(destIndex, 0, removed)
       return newFiles
     })
-    saveToHistory()
   }
 
   const formatFileSize = (bytes: number) => {
@@ -435,22 +491,6 @@ export function PDFToolsLayout({
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={undo}
-              disabled={historyIndex <= 0}
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-            >
-              <Redo className="h-4 w-4" />
-            </Button>
             <Button 
               variant="outline" 
               size="sm" 
@@ -696,14 +736,6 @@ export function PDFToolsLayout({
                 </Button>
               </div>
               
-              {extractMode === "all" && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-800">
-                    All pages will be extracted into separate PDF files.
-                  </p>
-                </div>
-              )}
-              
               {extractMode === "pages" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
@@ -730,7 +762,6 @@ export function PDFToolsLayout({
                     value={toolOptions[option.key]?.toString()}
                     onValueChange={(value) => {
                       setToolOptions(prev => ({ ...prev, [option.key]: value }))
-                      saveToHistory()
                     }}
                   >
                     <SelectTrigger>
@@ -751,7 +782,6 @@ export function PDFToolsLayout({
                     <Slider
                       value={[toolOptions[option.key] || option.defaultValue]}
                       onValueChange={([value]) => setToolOptions(prev => ({ ...prev, [option.key]: value }))}
-                      onValueCommit={() => saveToHistory()}
                       min={option.min}
                       max={option.max}
                       step={option.step}
@@ -770,7 +800,6 @@ export function PDFToolsLayout({
                     onChange={(e) => {
                       setToolOptions(prev => ({ ...prev, [option.key]: e.target.value }))
                     }}
-                    onBlur={saveToHistory}
                     placeholder={option.label}
                   />
                 )}
@@ -781,7 +810,6 @@ export function PDFToolsLayout({
                       checked={toolOptions[option.key] || false}
                       onCheckedChange={(checked) => {
                         setToolOptions(prev => ({ ...prev, [option.key]: checked }))
-                        saveToHistory()
                       }}
                     />
                     <span className="text-sm">{option.label}</span>

@@ -1,6 +1,6 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { ImageIcon } from "lucide-react"
 import { PDFProcessor } from "@/lib/pdf-processor"
 import JSZip from "jszip"
@@ -96,7 +96,7 @@ async function convertPDFToImage(files: any[], options: any) {
 
 export default function PDFToImagePage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="PDF to Image Converter"
       description="Convert PDF pages to high-quality images in multiple formats. Choose resolution, quality, and color mode for perfect results."
       icon={ImageIcon}

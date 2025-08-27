@@ -1,6 +1,6 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Droplets } from "lucide-react"
 import { PDFProcessor } from "@/lib/pdf-processor"
 import JSZip from "jszip"
@@ -119,7 +119,7 @@ async function addWatermarkToPDF(files: any[], options: any) {
 
 export default function PDFWatermarkPage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="PDF Watermark"
       description="Add text watermarks to your PDF documents. Customize opacity, position, size, and color to protect your documents or add branding."
       icon={Droplets}

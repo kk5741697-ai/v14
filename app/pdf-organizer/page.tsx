@@ -1,8 +1,8 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { ArrowUpDown } from "lucide-react"
-import { PDFProcessor } from "@/lib/processors/pdf-processor"
+import { PDFProcessor } from "@/lib/pdf-processor"
 
 const organizeOptions = [
   {
@@ -109,7 +109,7 @@ async function organizePDF(files: any[], options: any) {
 
 export default function PDFOrganizerPage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="Organize PDF"
       description="Reorder, sort, and organize PDF pages. Remove blank pages, add page numbers, and customize page arrangement."
       icon={ArrowUpDown}

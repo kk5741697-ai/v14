@@ -1,6 +1,6 @@
 "use client"
 
-import { PDFToolLayout } from "@/components/pdf-tool-layout"
+import { PDFToolsLayout } from "@/components/pdf-tools-layout"
 import { Lock } from "lucide-react"
 import { PDFProcessor } from "@/lib/pdf-processor"
 import JSZip from "jszip"
@@ -117,7 +117,7 @@ async function protectPDF(files: any[], options: any) {
 
 export default function PDFPasswordProtectorPage() {
   return (
-    <PDFToolLayout
+    <PDFToolsLayout
       title="PDF Password Protector"
       description="Add password protection and security restrictions to your PDF files. Control printing, copying, and editing permissions with strong encryption."
       icon={Lock}

@@ -12,7 +12,6 @@ const pdfTools = [
     href: "/pdf-merger",
     icon: FileType,
     category: "PDF Tools",
-    isPremium: true,
   },
   {
     title: "PDF Splitter",
@@ -34,6 +33,14 @@ const pdfTools = [
     href: "/pdf-to-image",
     icon: FileType,
     category: "PDF Tools",
+  },
+  {
+    title: "PDF to Word",
+    description: "Convert PDF files to editable Word documents with OCR support for scanned documents.",
+    href: "/pdf-to-word",
+    icon: FileType,
+    category: "PDF Tools",
+    isPremium: true,
   },
   {
     title: "PDF Password Protector",

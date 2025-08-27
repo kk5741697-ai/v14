@@ -105,6 +105,9 @@ export function ImageToolsLayout({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 })
+  const [cropHandles, setCropHandles] = useState<{ [key: string]: { x: number; y: number } }>({})
+  const [isResizing, setIsResizing] = useState<string | null>(null)
+  const [aspectRatioLocked, setAspectRatioLocked] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
 
@@ -276,6 +279,12 @@ export function ImageToolsLayout({
   const handleCropStart = (e: React.MouseEvent<HTMLImageElement>) => {
     if (toolType !== "crop") return
     
+    const target = e.target as HTMLElement
+    if (target.classList.contains('crop-handle')) {
+      setIsResizing(target.dataset.handle || null)
+      return
+    }
+    
     const img = e.currentTarget
     const rect = img.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
@@ -287,24 +296,84 @@ export function ImageToolsLayout({
   }
 
   const handleCropMove = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (toolType !== "crop" || !isDragging || !dragStart) return
+    if (toolType !== "crop") return
+    
+    if (isResizing && cropSelection) {
+      const img = e.currentTarget
+      const rect = img.getBoundingClientRect()
+      const x = ((e.clientX - rect.left) / rect.width) * 100
+      const y = ((e.clientY - rect.top) / rect.height) * 100
+      
+      let newSelection = { ...cropSelection }
+      
+      switch (isResizing) {
+        case 'nw':
+          newSelection.width += newSelection.x - x
+          newSelection.height += newSelection.y - y
+          newSelection.x = x
+          newSelection.y = y
+          break
+        case 'ne':
+          newSelection.width = x - newSelection.x
+          newSelection.height += newSelection.y - y
+          newSelection.y = y
+          break
+        case 'sw':
+          newSelection.width += newSelection.x - x
+          newSelection.height = y - newSelection.y
+          newSelection.x = x
+          break
+        case 'se':
+          newSelection.width = x - newSelection.x
+          newSelection.height = y - newSelection.y
+          break
+      }
+      
+      // Maintain aspect ratio if locked
+      if (aspectRatioLocked && toolOptions.aspectRatio !== "free") {
+        const ratio = parseFloat(toolOptions.aspectRatio?.split(':')[0] || "1") / parseFloat(toolOptions.aspectRatio?.split(':')[1] || "1")
+        if (newSelection.width / newSelection.height > ratio) {
+          newSelection.width = newSelection.height * ratio
+        } else {
+          newSelection.height = newSelection.width / ratio
+        }
+      }
+      
+      setCropSelection(newSelection)
+      return
+    }
+    
+    if (!isDragging || !dragStart) return
     
     const img = e.currentTarget
     const rect = img.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
     
-    setCropSelection({
+    let newSelection = {
       x: Math.min(dragStart.x, x),
       y: Math.min(dragStart.y, y),
       width: Math.abs(x - dragStart.x),
       height: Math.abs(y - dragStart.y)
-    })
+    }
+    
+    // Apply aspect ratio constraint
+    if (toolOptions.aspectRatio && toolOptions.aspectRatio !== "free") {
+      const ratio = parseFloat(toolOptions.aspectRatio.split(':')[0]) / parseFloat(toolOptions.aspectRatio.split(':')[1])
+      if (newSelection.width / newSelection.height > ratio) {
+        newSelection.width = newSelection.height * ratio
+      } else {
+        newSelection.height = newSelection.width / ratio
+      }
+    }
+    
+    setCropSelection(newSelection)
   }
 
   const handleCropEnd = () => {
     setIsDragging(false)
     setDragStart(null)
+    setIsResizing(null)
     
     if (cropSelection && selectedFile) {
       setFiles(prev => prev.map(file => 
@@ -578,15 +647,48 @@ export function ImageToolsLayout({
                             height: `${cropSelection.height}%`
                           }}
                         >
-                          {/* Enhanced Crop Handles */}
-                          <div className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-nw-resize"></div>
-                          <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-ne-resize"></div>
-                          <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-sw-resize"></div>
-                          <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-se-resize"></div>
+                          {/* Enhanced Crop Handles with Better UX */}
+                          <div 
+                            className="crop-handle absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-nw-resize pointer-events-auto"
+                            data-handle="nw"
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              setIsResizing("nw")
+                            }}
+                          ></div>
+                          <div 
+                            className="crop-handle absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-ne-resize pointer-events-auto"
+                            data-handle="ne"
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              setIsResizing("ne")
+                            }}
+                          ></div>
+                          <div 
+                            className="crop-handle absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-sw-resize pointer-events-auto"
+                            data-handle="sw"
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              setIsResizing("sw")
+                            }}
+                          ></div>
+                          <div 
+                            className="crop-handle absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md cursor-se-resize pointer-events-auto"
+                            data-handle="se"
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              setIsResizing("se")
+                            }}
+                          ></div>
                           
-                          {/* Crop Info */}
-                          <div className="absolute -top-10 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-md">
+                          {/* Enhanced Crop Info */}
+                          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-3 py-1 rounded shadow-md whitespace-nowrap">
                             {Math.round(cropSelection.width)}% × {Math.round(cropSelection.height)}%
+                            {currentFile && (
+                              <div className="text-center mt-1">
+                                {Math.round((cropSelection.width / 100) * currentFile.dimensions.width)} × {Math.round((cropSelection.height / 100) * currentFile.dimensions.height)} px
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -689,6 +791,38 @@ export function ImageToolsLayout({
             </div>
           )}
 
+          {/* Aspect Ratio Lock for Crop Tool */}
+          {toolType === "crop" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Aspect Ratio</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={aspectRatioLocked}
+                    onCheckedChange={setAspectRatioLocked}
+                  />
+                  <span className="text-xs">Lock</span>
+                </div>
+              </div>
+              
+              {cropSelection && currentFile && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-gray-600">Selection:</span>
+                      <div>{Math.round(cropSelection.width)}% × {Math.round(cropSelection.height)}%</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Pixels:</span>
+                      <div>
+                        {Math.round((cropSelection.width / 100) * currentFile.dimensions.width)} × {Math.round((cropSelection.height / 100) * currentFile.dimensions.height)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {/* Grouped Options */}
           {Object.entries(groupedOptions).map(([section, sectionOptions]) => (
             <div key={section} className="space-y-4">

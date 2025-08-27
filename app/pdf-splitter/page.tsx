@@ -20,6 +20,36 @@ const splitOptions = [
     section: "Split Settings",
   },
   {
+    key: "rangeMode",
+    label: "Range Mode",
+    type: "select" as const,
+    defaultValue: "custom",
+    selectOptions: [
+      { value: "custom", label: "Custom Ranges" },
+      { value: "fixed", label: "Fixed Intervals" },
+    ],
+    section: "Split Settings",
+    condition: (options) => options.splitMode === "range",
+  },
+  {
+    key: "mergeRanges",
+    label: "Merge all ranges in one PDF file",
+    type: "checkbox" as const,
+    defaultValue: false,
+    section: "Split Settings",
+    condition: (options) => options.splitMode === "range",
+  },
+  {
+    key: "equalParts",
+    label: "Number of Parts",
+    type: "input" as const,
+    defaultValue: 2,
+    min: 2,
+    max: 20,
+    section: "Split Settings",
+    condition: (options) => options.splitMode === "size",
+  },
+  {
     key: "preserveMetadata",
     label: "Preserve Metadata",
     type: "checkbox" as const,
@@ -41,7 +71,7 @@ async function splitPDF(files: any[], options: any) {
     // Handle different split modes
     let ranges: Array<{ from: number; to: number }> = []
     
-    if (options.extractMode === "pages" && options.selectedPages) {
+    if (options.splitMode === "pages" && options.selectedPages) {
       // Split into individual pages based on selected pages
       const selectedPageNumbers = options.selectedPages.map((pageKey: string) => {
         const parts = pageKey.split('-')
@@ -49,9 +79,18 @@ async function splitPDF(files: any[], options: any) {
       }).filter((num: number) => !isNaN(num))
       
       ranges = selectedPageNumbers.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
-    } else if (options.extractMode === "range") {
-      ranges = options.pageRanges || [{ from: 1, to: file.pageCount }]
-    } else if (options.extractMode === "size") {
+    } else if (options.splitMode === "range") {
+      if (options.rangeMode === "custom") {
+        ranges = options.pageRanges || [{ from: 1, to: file.pageCount }]
+      } else {
+        // Fixed intervals
+        const interval = Math.ceil(file.pageCount / 5) // Default 5 parts
+        ranges = Array.from({ length: 5 }, (_, i) => ({
+          from: i * interval + 1,
+          to: Math.min((i + 1) * interval, file.pageCount)
+        }))
+      }
+    } else if (options.splitMode === "size") {
       const parts = options.equalParts || 2
       const pagesPerPart = Math.ceil(file.pageCount / parts)
       ranges = Array.from({ length: parts }, (_, i) => ({
@@ -60,7 +99,6 @@ async function splitPDF(files: any[], options: any) {
       }))
     } else {
       // Extract all pages as individual files
-      ranges = selectedPages.map((pageNum: number) => ({ from: pageNum, to: pageNum }))
       ranges = Array.from({ length: file.pageCount }, (_, i) => ({ from: i + 1, to: i + 1 }))
     }
 
@@ -73,22 +111,42 @@ async function splitPDF(files: any[], options: any) {
 
     const splitResults = await PDFProcessor.splitPDF(file.originalFile || file.file, ranges)
 
-    // Create ZIP with split PDFs
-    const zip = new JSZip()
-    splitResults.forEach((pdfBytes, index) => {
-      const range = ranges[index]
-      const filename = range.from === range.to 
-        ? `${file.name.replace(".pdf", "")}_page_${range.from}.pdf`
-        : `${file.name.replace(".pdf", "")}_pages_${range.from}-${range.to}.pdf`
-      zip.file(filename, pdfBytes)
-    })
+    if (options.mergeRanges && splitResults.length > 1) {
+      // Merge all ranges into one PDF
+      const tempFiles = splitResults.map((bytes, index) => {
+        return new File([bytes], `temp-${index}.pdf`, { type: "application/pdf" })
+      })
+      
+      const mergedBytes = await PDFProcessor.mergePDFs(tempFiles, {
+        addBookmarks: false,
+        preserveMetadata: options.preserveMetadata
+      })
+      
+      const mergedBlob = new Blob([mergedBytes], { type: "application/pdf" })
+      const downloadUrl = URL.createObjectURL(mergedBlob)
+      
+      return {
+        success: true,
+        downloadUrl,
+      }
+    } else {
+      // Create ZIP with split PDFs
+      const zip = new JSZip()
+      splitResults.forEach((pdfBytes, index) => {
+        const range = ranges[index]
+        const filename = range.from === range.to 
+          ? `${file.name.replace(".pdf", "")}_page_${range.from}.pdf`
+          : `${file.name.replace(".pdf", "")}_pages_${range.from}-${range.to}.pdf`
+        zip.file(filename, pdfBytes)
+      })
 
-    const zipBlob = await zip.generateAsync({ type: "blob" })
-    const downloadUrl = URL.createObjectURL(zipBlob)
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+      const downloadUrl = URL.createObjectURL(zipBlob)
 
-    return {
-      success: true,
-      downloadUrl,
+      return {
+        success: true,
+        downloadUrl,
+      }
     }
   } catch (error) {
     return {

@@ -14,6 +14,13 @@ export interface TextProcessingOptions {
 export class TextProcessor {
   static processJSON(input: string, options: TextProcessingOptions = {}): { output: string; error?: string; stats?: any } {
     try {
+      if (!input.trim()) {
+        return {
+          output: "",
+          error: "Input cannot be empty",
+        }
+      }
+
       const parsed = JSON.parse(input)
       
       // Sort keys if requested
@@ -35,15 +42,17 @@ export class TextProcessor {
       const stats = {
         "Original Size": `${input.length} chars`,
         "Formatted Size": `${output.length} chars`,
+        "Size Change": `${((output.length / input.length - 1) * 100).toFixed(1)}%`,
         "Objects": this.countObjects(parsed),
         "Arrays": this.countArrays(parsed),
+        "Depth": this.getMaxDepth(parsed),
       }
 
       return { output, stats }
     } catch (error) {
       return {
         output: "",
-        error: error instanceof Error ? error.message : "Invalid JSON format",
+        error: `Invalid JSON: ${error instanceof Error ? error.message : "Parse error"}`,
       }
     }
   }
@@ -315,17 +324,148 @@ export class TextProcessor {
 
   private static countArrays(obj: any): number {
     let count = 0
+  static processXML(input: string, options: TextProcessingOptions = {}): { output: string; error?: string; stats?: any } {
+    try {
+      if (!input.trim()) {
+        return {
+          output: "",
+          error: "Input cannot be empty",
+        }
+      }
     if (Array.isArray(obj)) {
+      // Basic XML formatting
+      const parser = new DOMParser()
+      const xmlDoc = parser.parseFromString(input, "text/xml")
+      
+      // Check for parsing errors
+      const parseError = xmlDoc.querySelector("parsererror")
+      if (parseError) {
+        return {
+          output: "",
+          error: "Invalid XML format",
+        }
+      }
       count = 1
+      // Format XML with proper indentation
+      const serializer = new XMLSerializer()
+      let output = serializer.serializeToString(xmlDoc)
+      
+      if (!options.minify) {
+        output = this.formatXML(output, options.indent || 2)
+      }
       obj.forEach((item) => {
+      const stats = {
+        "Original Size": `${input.length} chars`,
+        "Formatted Size": `${output.length} chars`,
+        "Elements": (input.match(/<[^\/][^>]*>/g) || []).length,
+        "Attributes": (input.match(/\w+="[^"]*"/g) || []).length,
+      }
         count += this.countArrays(item)
+      return { output, stats }
+    } catch (error) {
+      return {
+        output: "",
+        error: `XML processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      }
+    }
+  }
       })
+  static processHTML(input: string, options: TextProcessingOptions = {}): { output: string; error?: string; stats?: any } {
+    try {
+      if (!input.trim()) {
+        return {
+          output: "",
+          error: "Input cannot be empty",
+        }
+      }
     } else if (obj !== null && typeof obj === "object") {
+      let output = input
       Object.values(obj).forEach((value) => {
+      if (options.minify) {
+        // Minify HTML
+        output = input
+          .replace(/>\s+</g, '><')
+          .replace(/\s+/g, ' ')
+          .trim()
+      } else {
+        // Format HTML with proper indentation
+        output = this.formatHTML(input, options.indent || 2)
+      }
         count += this.countArrays(value)
+      const stats = {
+        "Original Size": `${input.length} chars`,
+        "Formatted Size": `${output.length} chars`,
+        "HTML Tags": (input.match(/<[^>]+>/g) || []).length,
+        "Text Nodes": input.replace(/<[^>]*>/g, '').trim().split(/\s+/).length,
+      }
+      })
+      return { output, stats }
+    } catch (error) {
+      return {
+        output: "",
+        error: `HTML processing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      }
+    }
+  }
+    }
+  private static formatXML(xml: string, indent: number | string): string {
+    const indentStr = typeof indent === "number" ? " ".repeat(indent) : indent
+    let formatted = ""
+    let level = 0
+    
+    xml.split(/>\s*</).forEach((node, index) => {
+      if (index > 0) formatted += ">"
+      if (index < xml.split(/>\s*</).length - 1) formatted += "<"
+      
+      if (node.match(/^\/\w/)) level--
+      formatted += "\n" + indentStr.repeat(level) + node
+      if (node.match(/^<?\w[^>]*[^\/]$/)) level++
+    })
+    
+    return formatted.substring(1)
+  }
+    return count
+  private static formatHTML(html: string, indent: number | string): string {
+    const indentStr = typeof indent === "number" ? " ".repeat(indent) : indent
+    let formatted = ""
+    let level = 0
+    
+    // Simple HTML formatting
+    const tokens = html.match(/<\/?[^>]+>|[^<]+/g) || []
+    
+    tokens.forEach(token => {
+      if (token.match(/^<\/\w/)) {
+        level--
+        formatted += "\n" + indentStr.repeat(level) + token
+      } else if (token.match(/^<\w[^>]*[^\/]>$/)) {
+        formatted += "\n" + indentStr.repeat(level) + token
+        level++
+      } else if (token.trim()) {
+        formatted += "\n" + indentStr.repeat(level) + token.trim()
+      }
+    })
+    
+    return formatted.trim()
+  }
+  }
+  private static getMaxDepth(obj: any, currentDepth = 0): number {
+    if (obj === null || typeof obj !== "object") {
+      return currentDepth
+    }
+    
+    let maxDepth = currentDepth
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => {
+        maxDepth = Math.max(maxDepth, this.getMaxDepth(item, currentDepth + 1))
+      })
+    } else {
+      Object.values(obj).forEach(value => {
+        maxDepth = Math.max(maxDepth, this.getMaxDepth(value, currentDepth + 1))
       })
     }
-    return count
+    
+    return maxDepth
   }
 
   private static countCaseChanges(input: string, output: string): number {

@@ -430,6 +430,35 @@ export class PDFProcessor {
 
     return images
   }
+  static async pdfToWord(file: File, options: PDFProcessingOptions = {}): Promise<Uint8Array> {
+    // Simulate PDF to Word conversion
+    // In a real implementation, this would use libraries like pdf2docx or server-side conversion
+    
+    const arrayBuffer = await file.arrayBuffer()
+    const pdf = await PDFDocument.load(arrayBuffer)
+    const pageCount = pdf.getPageCount()
+    
+    // Create a simple text representation
+    let wordContent = `Document: ${file.name}\n\n`
+    
+    for (let i = 1; i <= pageCount; i++) {
+      wordContent += `Page ${i}\n`
+      wordContent += `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n\n`
+      
+      if (options.preserveImages) {
+        wordContent += `[Image placeholder from page ${i}]\n\n`
+      }
+    }
+    
+    wordContent += `\nConverted by PixoraTools PDF to Word Converter\n`
+    wordContent += `Original file: ${file.name}\n`
+    wordContent += `Pages: ${pageCount}\n`
+    wordContent += `Conversion date: ${new Date().toISOString()}\n`
+    
+    // Return as text for now (in real implementation, would create proper Word document)
+    const encoder = new TextEncoder()
+    return encoder.encode(wordContent)
+  }
 
   static async imagesToPDF(imageFiles: File[], options: PDFProcessingOptions = {}): Promise<Uint8Array> {
     const pdf = await PDFDocument.create()

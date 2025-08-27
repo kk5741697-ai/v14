@@ -89,6 +89,9 @@ export function PDFToolsLayout({
   const [isProcessing, setIsProcessing] = useState(false)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [extractMode, setExtractMode] = useState<"all" | "pages" | "range" | "size">("all")
+  const [rangeMode, setRangeMode] = useState<"custom" | "fixed">("custom")
+  const [pageRanges, setPageRanges] = useState<Array<{ from: number; to: number }>>([{ from: 1, to: 1 }])
+  const [mergeRanges, setMergeRanges] = useState(false)
   const [showPageNumbers, setShowPageNumbers] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -706,14 +709,14 @@ export function PDFToolsLayout({
           {toolType === "split" && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Extract Mode</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 mb-4">
                 <Button
                   variant={extractMode === "range" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setExtractMode("range")}
                   className="flex flex-col items-center p-3 h-auto"
                 >
-                  <div className="text-lg mb-1">📄</div>
+                  <div className="text-lg mb-1">📑</div>
                   <span className="text-xs">Range</span>
                 </Button>
                 <Button
@@ -722,7 +725,7 @@ export function PDFToolsLayout({
                   onClick={() => setExtractMode("pages")}
                   className="flex flex-col items-center p-3 h-auto"
                 >
-                  <div className="text-lg mb-1">📑</div>
+                  <div className="text-lg mb-1">📄</div>
                   <span className="text-xs">Pages</span>
                 </Button>
                 <Button
@@ -736,12 +739,130 @@ export function PDFToolsLayout({
                 </Button>
               </div>
               
+              {/* Range Mode Options */}
+              {extractMode === "range" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Range mode:</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <Button
+                        variant={rangeMode === "custom" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setRangeMode("custom")}
+                        className="text-xs"
+                      >
+                        Custom ranges
+                      </Button>
+                      <Button
+                        variant={rangeMode === "fixed" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setRangeMode("fixed")}
+                        className="text-xs"
+                      >
+                        Fixed ranges
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Range Inputs */}
+                  <div className="space-y-3">
+                    {pageRanges.map((range, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500 w-16">Range {index + 1}</span>
+                        <div className="flex items-center space-x-2 flex-1">
+                          <Input
+                            type="number"
+                            placeholder="from page"
+                            value={range.from}
+                            onChange={(e) => {
+                              const newRanges = [...pageRanges]
+                              newRanges[index].from = parseInt(e.target.value) || 1
+                              setPageRanges(newRanges)
+                            }}
+                            className="text-xs h-8"
+                            min={1}
+                          />
+                          <span className="text-xs text-gray-500">to</span>
+                          <Input
+                            type="number"
+                            placeholder="to page"
+                            value={range.to}
+                            onChange={(e) => {
+                              const newRanges = [...pageRanges]
+                              newRanges[index].to = parseInt(e.target.value) || 1
+                              setPageRanges(newRanges)
+                            }}
+                            className="text-xs h-8"
+                            min={1}
+                          />
+                          {pageRanges.length > 1 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setPageRanges(prev => prev.filter((_, i) => i !== index))
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPageRanges(prev => [...prev, { from: 1, to: 1 }])
+                      }}
+                      className="w-full text-xs h-8"
+                    >
+                      + Add Range
+                    </Button>
+                  </div>
+
+                  {/* Merge Option */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={mergeRanges}
+                      onCheckedChange={setMergeRanges}
+                    />
+                    <Label className="text-sm">Merge all ranges in one PDF file.</Label>
+                  </div>
+                </div>
+              )}
+
               {extractMode === "pages" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
                     Selected pages will be extracted. 
                     <span className="font-medium"> {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''}</span> selected.
                   </p>
+                </div>
+              )}
+
+              {extractMode === "size" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">Number of Parts</Label>
+                    <Input
+                      type="number"
+                      value={toolOptions.equalParts || 2}
+                      onChange={(e) => {
+                        setToolOptions(prev => ({ ...prev, equalParts: parseInt(e.target.value) || 2 }))
+                      }}
+                      min={2}
+                      max={20}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      PDF will be split into <span className="font-medium">{toolOptions.equalParts || 2}</span> equal parts.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

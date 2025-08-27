@@ -51,8 +51,20 @@ const convertOptions = [
       { value: "90", label: "90° Clockwise" },
       { value: "180", label: "180° (Flip)" },
       { value: "270", label: "270° Clockwise" },
+      { value: "custom", label: "Custom Angle" },
     ],
     section: "Transform",
+  },
+  {
+    key: "customRotation",
+    label: "Custom Rotation Angle",
+    type: "slider" as const,
+    defaultValue: 0,
+    min: -180,
+    max: 180,
+    step: 1,
+    section: "Transform",
+    condition: (options) => options.rotation === "custom",
   },
   {
     key: "flipHorizontal",
@@ -68,6 +80,31 @@ const convertOptions = [
     defaultValue: false,
     section: "Transform",
   },
+  {
+    key: "resizeWidth",
+    label: "Resize Width (px)",
+    type: "input" as const,
+    defaultValue: 0,
+    min: 0,
+    max: 10000,
+    section: "Resize",
+  },
+  {
+    key: "resizeHeight",
+    label: "Resize Height (px)",
+    type: "input" as const,
+    defaultValue: 0,
+    min: 0,
+    max: 10000,
+    section: "Resize",
+  },
+  {
+    key: "maintainAspectRatio",
+    label: "Lock Aspect Ratio",
+    type: "checkbox" as const,
+    defaultValue: true,
+    section: "Resize",
+  },
 ]
 
 async function convertImages(files: any[], options: any) {
@@ -81,6 +118,13 @@ async function convertImages(files: any[], options: any) {
 
     const processedFiles = await Promise.all(
       files.map(async (file) => {
+        let rotation = 0
+        if (options.rotation === "custom") {
+          rotation = options.customRotation || 0
+        } else {
+          rotation = parseInt(options.rotation) || 0
+        }
+
         const processedBlob = await ImageProcessor.convertFormat(
           file.originalFile || file.file,
           options.outputFormat as "jpeg" | "png" | "webp",
@@ -88,7 +132,12 @@ async function convertImages(files: any[], options: any) {
             quality: options.quality,
             backgroundColor: options.backgroundColor,
             outputFormat: options.outputFormat as "jpeg" | "png" | "webp",
-            rotation: parseInt(options.rotation) || 0,
+            rotation,
+            flipHorizontal: options.flipHorizontal,
+            flipVertical: options.flipVertical,
+            width: options.resizeWidth > 0 ? options.resizeWidth : undefined,
+            height: options.resizeHeight > 0 ? options.resizeHeight : undefined,
+            maintainAspectRatio: options.maintainAspectRatio,
           }
         )
 

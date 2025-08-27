@@ -110,4 +110,22 @@ not like this
 @components/simple-pdf-tools-layout.tsx
 @components/enchanced-pdf-tools-layout.tsx
 or other files also be like this, because no need to rename unncessary for same things.
+
+
+
+------------
+
+
+@app/*
+@components/*
+@hooks/*
+@lib/*
+
+
+enhance the overall functionality, features, hassle free of all tools
+also fix all the problems of overall all the tools, because no any tools all the functionality and features are not working smoothly and perfectly.
+and also check for function errors, syntax errors etc problems can be happend.
+-------------------
+i  have attached some screenshorts also, you need to make improvements our current tools features, functionality, UI/UX etc.
+
 you need to handle more better way to keep constenticy.

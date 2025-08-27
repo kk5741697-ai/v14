@@ -205,5 +205,28 @@ Every time you generate code, validate that it runs without syntax or Next.js in
 
 
 
+Ensure the project compiles and runs with zero runtime or compile-time errors in Next.js App Router.
+Specifically:
 
+Automatically detect and fix client/server component mismatches:
+
+If a file uses useState, useEffect, useRouter, useSearchParams, or other client-only hooks, prepend "use client" at the top.
+
+If a component doesn’t need client hooks, keep it as a server component for performance.
+
+Resolve errors like:
+
+Invariant: Expected workUnitAsyncStorage to have a store
+
+Plugin is not supported with current @swc/core
+
+Any NonErrorEmittedError issues.
+
+Normalize all imports to avoid path errors (@app/*, @components/*, @hooks/*, @lib/*) and ensure TypeScript/tsconfig paths are respected.
+
+Fix SWC plugin compatibility and ensure the right @swc/core version is installed.
+
+Enforce consistent client/server boundaries to avoid hydration bugs.
+
+Apply lint rules to prevent reintroduction of these issues.
 you need to handle more better way to keep constenticy.
